@@ -546,15 +546,15 @@ Notes:
 - [x] TanStack Start app with Mantine, CSS Modules, React Compiler, `env.ts`.
 - [x] better-auth with Pocket ID, `authMiddleware`, `createUserPostgrestClient`, from
       stripclub.
-- [ ] Register `http://127.0.0.1:3001/api/auth/callback/pocket-id` in Pocket ID. Test one
+- [x] Register `http://127.0.0.1:3001/api/auth/callback/pocket-id` in Pocket ID. Test one
       real sign-in.
 - [x] `LoginView`, the `AppShell` layout, sign-out.
 - [x] `Modal`, `Drawer`, and `ConfirmModal` wrappers (Clarity rules).
 
 Notes:
 
-- The Pocket ID step needs Mitch: make the OIDC client in Pocket ID, then put
-  `BETTER_AUTH_SECRET` and the `POCKET_ID_*` values in `.env` (see `.env.example`).
+- The local OIDC client in Pocket ID is "Ledger Local". The first real sign-in links the
+  `pocket-id` account to the seed user `mitch@mitch-ryan.com`, with no second user (D3).
 - `tsconfig.json` now has the settings of `apps/web/tsconfig.json` of stripclub (`bundler`,
   DOM, JSX, the TanStack Router plugin), for the whole repository. `lint:typescript` stays
   `tsc6`.
