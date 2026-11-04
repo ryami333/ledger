@@ -454,15 +454,31 @@ stack (D1).
 
 ### Phase 0: Repository scaffold
 
-- [ ] Copy from stripclub: `package.json` (without the worker scripts), `.node-version`,
+- [x] Copy from stripclub: `package.json` (without the worker scripts), `.node-version`,
       `.yarnrc.yml`, `tsconfig.json`, ESLint, Prettier, Stylelint, Vitest, `.gitignore`,
       `.dockerignore`, `.release-it.mjs`.
-- [ ] Workspaces `apps/web`, `packages/core`, `packages/db`, with the package scope
+- [x] Workspaces `apps/web`, `packages/core`, `packages/db`, with the package scope
       `@ledger/`.
-- [ ] `AGENTS.md` with the glossary, the stack, the commands, and the conventions above.
+- [x] `AGENTS.md` with the glossary, the stack, the commands, and the conventions above.
       `CLAUDE.md` with `@AGENTS.md`.
-- [ ] `.claude/launch.json` for `yarn dev` on port 3001, with `fnm exec`.
-- [ ] GitHub Actions `pr-check.yaml`: lint, test, build, pgTAP, schema drift, and type drift.
+- [x] `.claude/launch.json` for `yarn dev` on port 3001, with `fnm exec`.
+- [x] GitHub Actions `pr-check.yaml`: lint, test, build, pgTAP, schema drift, and type drift.
+
+Notes:
+
+- Stylelint has the rules of Clarity for logical properties and shorthands
+  (`stylelint-use-logical`), because Clarity wins for the conventions. `lint:stylelint` has
+  `--allow-empty-input`, because the repository has no CSS file yet.
+- `lint:typescript` is `tsc6` only. Phase 2 adds `apps/web/tsconfig.json` and
+  `&& tsc6 -p apps/web`, as in stripclub.
+- `apps/web` and `packages/db` have only a `package.json` and an empty `src/`.
+  `packages/core` has `isCurrencyCode` and its test, so that `yarn test` has a test to run.
+- In `pr-check.yaml`, the jobs Build, Database Types Drift, Schema Drift, and pgTAP first
+  check that their files exist (`apps/web/vite.config.ts` for Phase 2, `compose.yaml` for
+  Phase 1). If the files do not exist, the job skips its checks and passes.
+- The env block of `pr-check.yaml` uses the ports of D14 and has no `MEDIA_DIR`. Phase 2
+  adds the env variables of `env.ts` that the migration script needs.
+- `.gitignore` ignores `.claude/*` except `.claude/launch.json`.
 
 ### Phase 1: Database
 
