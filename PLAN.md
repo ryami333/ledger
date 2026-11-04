@@ -724,15 +724,43 @@ Notes:
 
 ### Phase 6: Deployment
 
-- [ ] `deploy/web.Dockerfile` (Alpine, Node 24, `yarn workspaces focus --production`), from
+- [x] `deploy/web.Dockerfile` (Alpine, Node 24, `yarn workspaces focus --production`), from
       stripclub.
-- [ ] `deploy/compose.yaml` with `db`, `rest`, `ledger-web`, and `db-dump` (D12, D13).
-- [ ] `deploy/generate-secrets.sh`, `deploy/Makefile`, `deploy/README.md`.
-- [ ] `docker-publish.yaml` and release-it. First release and digest pins.
+- [x] `deploy/compose.yaml` with `db`, `rest`, `ledger-web`, and `db-dump` (D12, D13).
+- [x] `deploy/generate-secrets.sh`, `deploy/Makefile`, `deploy/README.md`.
+- [x] `docker-publish.yaml` and release-it.
+- [ ] First release (`yarn release`) and the digest pin of `ledger-web` in
+      `deploy/compose.yaml`.
 - [ ] Pocket ID: a new OIDC client for `ledger`, limited to one user group, with the callback
       URL `https://ledger.mitchryan.org/api/auth/callback/pocket-id`. Test one real sign-in on
       the host.
 - [ ] Add the Zerobyte job for `./data/backups`.
+
+Notes:
+
+- `web.Dockerfile` is the file of stripclub for one package: the build stage runs
+  `yarn install --immutable` and `yarn build`. The runtime stage runs
+  `yarn workspaces focus --production` and copies `src/env.ts`, `src/core`, `src/scripts`,
+  `db/migrations`, and `.output`. The command runs the migration script, then the server,
+  with no Yarn process between.
+- `deploy/compose.yaml` has the image `ghcr.io/ryami333/ledger-web:0.1.0` with no digest.
+  The first release sets the real version and adds the digest.
+- `db-dump` uses the image of `db`, as UID 1000, with `init: true`. Its shell loop sleeps
+  until 02:30 UTC, then runs `deploy/dump-database.sh`. The script writes to
+  `ledger.dump.partial` first, then renames it. `make dump` runs the same script.
+- `pg_restore --clean`, as in the README of stripclub, drops the schema `public` and makes
+  it again with no `USAGE` grant to `public`. PostgREST then answers 403. The restore steps
+  in `deploy/README.md` restore into a new database and skip the entry of the schema
+  `public`.
+- `docker-publish.yaml` sets `flavor: latest=false`. The semver tags of
+  `docker/metadata-action` otherwise add `latest`.
+- `.release-it.mjs` is from Phase 0. Its hook `before:init` runs `yarn lint`, `yarn test`,
+  `yarn db:test`, and `yarn build`.
+- `deploy/compose.local.yaml` publishes the web app on `127.0.0.1:3082`, not on a port of
+  D14 or of stripclub. Tested with a local `linux/amd64` image and dummy Pocket ID values:
+  the migrations ran, `/login` answered 200, PostgREST refused `anon` and served
+  `authenticated`, a restart applied no migration, and `make dump` and the restore steps
+  brought back the seed data.
 
 ## Roadmap
 
