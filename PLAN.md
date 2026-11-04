@@ -576,17 +576,63 @@ Notes:
 
 All in `src/core`, with unit tests:
 
-- [ ] `parseAmount` and `formatAmount` (D4). Test currencies with 0, 2, and 3 decimals.
-- [ ] `parseRate`, `convertAmount`, and `rebaseRates` (D5). Test the rounding, and a
+- [x] `parseAmount` and `formatAmount` (D4). Test currencies with 0, 2, and 3 decimals.
+- [x] `parseRate`, `convertAmount`, and `rebaseRates` (D5). Test the rounding, and a
       conversion between currencies with different decimals.
-- [ ] `splitSide` (D6). Test the alias as one party, a member on a side two times, that each
+- [x] `splitSide` (D6). Test the alias as one party, a member on a side two times, that each
       side sums to the converted amount, and that the result does not change with the input
       order.
-- [ ] `calculateBalances` (D10). Test that the balances sum to zero, also with more than one
+- [x] `calculateBalances` (D10). Test that the balances sum to zero, also with more than one
       currency.
-- [ ] `describeBalance` and `describeTransaction` (the preview and list lines).
-- [ ] Zod schemas for the transaction form, the alias form, the currency form, and the space
+- [x] `describeBalance` and `describeTransaction` (the preview and list lines).
+- [x] Zod schemas for the transaction form, the alias form, the currency form, and the space
       form.
+
+Notes:
+
+- The folders are `src/core/money` (amounts), `src/core/currencies` (rates),
+  `src/core/balances` (split and balances), `src/core/transactions` (text and party
+  values), and `src/core/forms` (Zod schemas).
+- The input types of `src/core` use the column names of `db/schemas`, for example
+  `amount_minor`, `is_default`, and `member_id`. `src/core` does not import
+  `src/db/database.types.ts`.
+- `amount_minor` is a `bigint` in `src/core`. PostgREST gives a `bigint` as a JSON number.
+  Thus `src/db` or the server function must convert it with `BigInt(...)`. The transaction
+  form refuses an amount above `Number.MAX_SAFE_INTEGER` minor units (`MAX_AMOUNT_MINOR`),
+  so that the JSON number keeps all its digits.
+- A rate in `src/core` is a scaled rate: a `bigint`, the rate times 10^8, as
+  `numeric(18, 8)`. `parseRate` reads the text of `rate::text`. `formatRate` writes the
+  text for the rate input and for `save_space_currencies`, with no zeros at the end.
+- `parseAmount` accepts a decimal point only, with no thousands separator. It refuses more
+  decimals than the currency has. It does not round. `formatAmountInput` writes the text of
+  an existing amount for the form.
+- `formatAmount` gives a decimal text to `Intl.NumberFormat`, not a number. With `en-IE`,
+  USD shows as "US$40.00", not as "$40.00" as in the UI section.
+- A currency must be known to `Intl` (`isSupportedCurrency`), so that the decimals are
+  correct. `Intl` gives 2 decimals for an unknown code.
+- `rebaseRates` takes and gives the rows of the currency form, with each rate as text. It
+  keeps a rate text that is not valid. It returns `null` when the new default currency has
+  no valid rate. A very small rate can round to "0". The currency form schema then refuses
+  it, and the user corrects it.
+- `calculateBalances` also sorts the result (D10). In each group, the largest amount comes
+  first, then the name. It omits an archived member with a balance of zero (D8). It throws
+  when the rows do not agree, for example a transaction in a currency that is not a space
+  currency.
+- `describeTransaction` writes the list line, for example "Obamas' Shared Account paid for
+  everyone". Paid to is "everyone" when its members, also through an alias, include each
+  member that is not archived. The names are in alphabetical order.
+- `describeTransactionPreview` writes the preview line. It splits the amount in the
+  currency of the transaction, among the parties of each side, and keeps the order of the
+  form. With unequal parts it writes, for example, "€33.33 or €33.34". More than 3 member
+  parties give "Each of 4 members".
+- The party picker uses the option values `member:<id>` and `alias:<id>`
+  (`partyValueHelpers.ts`). The transaction form schema converts them to the jsonb parties
+  of `save_transaction`.
+- The output of each form schema has the parameters of its function in D9. The edit form
+  of a space uses `spaceFormSchema.pick({ title: true, description: true })`. The space form
+  allows zero member names.
+- The transaction form schema checks the decimals of the amount after the other fields are
+  valid, because the check needs the currency.
 
 ### Phase 4: Spaces, members, aliases, and currencies
 
