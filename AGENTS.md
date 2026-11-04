@@ -71,7 +71,7 @@ style also for commit messages, pull-request descriptions, and reviews. Obey the
 2. **Integer money.** Store and calculate each amount as an integer in minor units (`bigint`
    in Postgres, `bigint` in TypeScript). Do not use `float`, and do not use `parseFloat`.
 3. **Pure money logic.** The parse, the format, the conversion, the split, and the balances
-   are pure functions in `packages/core`, with unit tests.
+   are pure functions in `src/core`, with unit tests.
 4. **Strict RLS.** Each table in `public` has RLS on. The web app reads and writes data with
    the user client: PostgREST with a JWT of the role `authenticated`. The role `anon` gets
    nothing.
@@ -81,7 +81,8 @@ style also for commit messages, pull-request descriptions, and reviews. Obey the
 
 ## Tech stack
 
-- **Runtime:** Node 24, Yarn 4 workspaces, TypeScript 6 strict. Use `fnm` for other Node
+- **Runtime:** Node 24, Yarn 4, TypeScript 6 strict. The repository is one package
+  with no workspaces. Use `fnm` for other Node
   versions, for example `fnm exec --using=24.22.2 -- yarn lint`.
 - **Web app:** TanStack Start (TanStack Router, Vite, Nitro), React 19 with the React
   Compiler, Mantine 9 (`@mantine/core`, `@mantine/hooks`, `@mantine/dates`), CSS Modules with
@@ -105,9 +106,9 @@ small changes where you can.
 ## Repository layout
 
 ```
-apps/web/            TanStack Start app (UI, server functions, auth routes)
-packages/core/       Money logic and shared types, with no I/O
-packages/db/         PostgREST client and generated database types
+src/                 TanStack Start app (UI, server functions, auth routes)
+src/core/            Money logic and shared types, with no I/O
+src/db/              PostgREST client and generated database types
 db/schemas/          Declarative schema: the current shape of the database
 db/migrations/       Generated migrations: the history of the changes
 db/tests/            pgTAP tests
@@ -116,9 +117,14 @@ deploy/              Docker Compose file, Dockerfile, Makefile, README for the h
 scripts/             diff-database.sh, test-database.sh
 ```
 
-Put logic that has no I/O in `packages/core`. Examples: the parse and the format of amounts,
+Put logic that has no I/O in `src/core`. Examples: the parse and the format of amounts,
 the currency conversion, the split into shares, the balances, and the Zod schemas of the
-forms. The web app imports it from there.
+forms. The rest of the app imports it from there.
+
+Keep these boundaries:
+
+- `src/core` imports nothing from the rest of `src/`.
+- `src/db` imports only from `src/core`.
 
 ## Local ports
 
@@ -133,7 +139,7 @@ The local stack uses other ports than stripclub, so both stacks can run at the s
 ```bash
 yarn dev              # Web app dev server on port 3001
 yarn build            # Build the web app
-yarn test             # Vitest, all workspaces
+yarn test             # Vitest
 yarn lint             # Prettier, ESLint, TypeScript, Stylelint
 yarn format           # Prettier, write the changes
 yarn db:start         # Start the local stack (compose.yaml) and apply the migrations
@@ -144,7 +150,7 @@ yarn db:migrate       # Apply the missing migrations to DATABASE_URL
 yarn db:diff <name>   # Write a migration from the schema files (pg-delta)
 yarn db:test          # pgTAP tests in a new database, ledger_test
 yarn db:psql          # psql in the local database
-yarn generate         # Generate database types into packages/db (postgres-meta)
+yarn generate         # Generate database types into src/db (postgres-meta)
 yarn release          # release-it: bump, tag, GitHub release; the tag publishes the image
 ```
 
@@ -511,7 +517,7 @@ Keep the native `Date` in these cases:
 
 ### Read env variables in one file
 
-Read env variables only in `apps/web/src/env.ts`, with `@t3-oss/env-core` and Zod. Do not
+Read env variables only in `src/env.ts`, with `@t3-oss/env-core` and Zod. Do not
 read `process.env` in other files. The ESLint rule `no-restricted-properties` enforces this.
 
 ## Module conventions
@@ -524,14 +530,14 @@ read `process.env` in other files. The ESLint rule `no-restricted-properties` en
   `parseDate`, and `compareDates`.
 - Give each export a name that is clear at each call site, with no knowledge of its module
   path. A name that is clear only in its folder is not specific enough. Example:
-  `createUserClient` is clear in `packages/db`, but not in a view. Name it
+  `createUserClient` is clear in `src/db`, but not in a view. Name it
   `createUserPostgrestClient`.
 - Do not add an `index.ts` file that only exports again from other files (a "barrel file").
   Import each symbol from the file that declares it.
 
 ### Server functions
 
-Put each TanStack Start server function in `apps/web/src/serverFunctions/`, one for each
+Put each TanStack Start server function in `src/serverFunctions/`, one for each
 file. Give its export the suffix `ServerFn`, and give the file the same name. Example:
 `serverFunctions/saveTransactionServerFn.ts` exports `saveTransactionServerFn`.
 
@@ -545,7 +551,7 @@ Read and write user data in a server function with the user client (`context.db`
 
 ### Routes and views
 
-- A route file in `apps/web/src/routes/` holds only the routing and the loader. It returns
+- A route file in `src/routes/` holds only the routing and the loader. It returns
   one view component. It gives the data to the view component as props.
 - Give the view component the suffix `View`, for example `SpaceView`. Do not add a second
   suffix: use `SpaceView`, not `SpaceViewPage` or `SpacePageView`.
@@ -555,14 +561,14 @@ Read and write user data in a server function with the user client (`context.db`
   prop that tells the state. The route file then returns the same view component for each
   state.
 - Put each view component in its own folder:
-  `apps/web/src/components/views/<Name>View/<Name>View.tsx`. Put these files in the same
+  `src/components/views/<Name>View/<Name>View.tsx`. Put these files in the same
   folder:
   - the stylesheet, `<Name>View.module.css`
   - the types file, `<Name>View.types.ts`
   - each sub-component that only this view uses, with its stylesheet
 
   A module that a layout, a route file, or a different view also uses is not specific to the
-  view. Put it in `apps/web/src/lib/` or in a shared folder in `apps/web/src/components/`.
+  view. Put it in `src/lib/` or in a shared folder in `src/components/`.
 
 - Keep the state of a page that a link must open again in the URL search params, with a Zod
   search schema. Example: the search param `transaction` holds the ID of the open
@@ -570,7 +576,7 @@ Read and write user data in a server function with the user client (`context.db`
 
 ### React components
 
-- The React Compiler is on (the Babel plugin in `apps/web/vite.config.ts`). In most cases, do
+- The React Compiler is on (the Babel plugin in `vite.config.ts`). In most cases, do
   not add `useMemo` or `useCallback` by hand. The compiler adds this memoization at build
   time.
 - Define the prop types in the component signature. Do not make a separate
@@ -604,12 +610,12 @@ Read and write user data in a server function with the user client (`context.db`
 
 ### Forms
 
-Use React Hook Form with a Zod schema from `packages/core`. Type `defaultValues` with
+Use React Hook Form with a Zod schema from `src/core`. Type `defaultValues` with
 `z.input` and `onSubmit` with `z.output`. `onSubmit` returns `Promise<void>`.
 
 ### Modals
 
-- Use the thin wrappers around Mantine in `apps/web/src/components/ui/`: `Modal` for each
+- Use the thin wrappers around Mantine in `src/components/ui/`: `Modal` for each
   modal, `Drawer` for a panel at the side of the viewport, and `ConfirmModal` for a
   confirmation. Do not use the Mantine `Modal` or `Drawer` directly in a feature.
 - Close a modal only after its action is successful. If the action fails, show the error and
@@ -644,10 +650,10 @@ Use React Hook Form with a Zod schema from `packages/core`. Type `defaultValues`
   when only one value can apply at a time. Give the attribute the modifier value, for example
   `data-variant="primary"`. Select it in the CSS module with an attribute selector on the
   base class, for example `&[data-variant="primary"] { ... }`. For a boolean modifier, set
-  the attribute with `stringBool(...)` from `apps/web/src/lib/stringBool.ts`. The attribute
+  the attribute with `stringBool(...)` from `src/lib/stringBool.ts`. The attribute
   is then always the text `"true"` or `"false"`. Select it with `&[data-full-width="true"]`
   or `&[data-full-width="false"]`.
-- Put each global z-index in `apps/web/src/styles/tokens/z-index.css`. A global z-index is a
+- Put each global z-index in `src/styles/tokens/z-index.css`. A global z-index is a
   z-index in the root stacking context. Give each layer a token with the name
   `--z-index--<layer>`, and read it with `z-index: var(--z-index--<layer>)`. Use steps of
   100, so a new layer can go between two layers. A CSS module can use a private z-index only
@@ -745,7 +751,7 @@ Use React Hook Form with a Zod schema from `packages/core`. Type `defaultValues`
 
 ## Script conventions
 
-These rules apply to the Node scripts, for example `apps/web/src/scripts/migrateDatabase.ts`.
+These rules apply to the Node scripts, for example `src/scripts/migrateDatabase.ts`.
 
 - Use top-level await. Do not put the script body in a `main` function. To stop early, put
   the remaining steps in an `if`/`else` block or in a named function: a module cannot

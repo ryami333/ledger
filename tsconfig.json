@@ -18,5 +18,12 @@
     "incremental": true
   },
   "include": ["**/*.ts", "**/*.mts", "**/*.mjs", "**/*.js"],
-  "exclude": ["node_modules", "**/node_modules", "tmp", "apps/web"]
+  "exclude": [
+    "node_modules",
+    "**/node_modules",
+    "tmp",
+    ".output",
+    ".nitro",
+    ".tanstack"
+  ]
 }

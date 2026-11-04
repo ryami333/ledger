@@ -6,13 +6,10 @@
   "engines": {
     "node": "^24.22.2"
   },
-  "workspaces": [
-    "apps/*",
-    "packages/*"
-  ],
   "scripts": {
-    "dev": "yarn workspace @ledger/web dev",
-    "build": "yarn workspace @ledger/web build",
+    "dev": "vite dev",
+    "build": "vite build",
+    "start": "node .output/server/index.mjs",
     "lint": "yarn lint:prettier && yarn lint:eslint && yarn lint:typescript && yarn lint:stylelint",
     "lint:eslint": "eslint .",
     "lint:prettier": "prettier . --check",
@@ -25,11 +22,11 @@
     "db:stop": "docker compose stop",
     "db:reset": "docker compose down --volumes && docker compose up -d --wait && yarn db:migrate && yarn db:seed",
     "db:seed": "cat db/seeds/*.sql | docker compose exec -T db psql -U postgres -v ON_ERROR_STOP=1 --quiet",
-    "db:migrate": "node --env-file-if-exists=.env apps/web/src/scripts/migrateDatabase.ts",
+    "db:migrate": "node --env-file-if-exists=.env src/scripts/migrateDatabase.ts",
     "db:diff": "scripts/diff-database.sh",
     "db:test": "scripts/test-database.sh",
     "db:psql": "docker compose exec db psql -U postgres",
-    "generate": "docker compose run --rm --quiet-pull types > packages/db/src/database.types.ts && prettier --write packages/db/src/database.types.ts",
+    "generate": "docker compose run --rm --quiet-pull types > src/db/database.types.ts && prettier --write src/db/database.types.ts",
     "release": "release-it"
   },
   "devDependencies": {

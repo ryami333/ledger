@@ -7,7 +7,7 @@
 # first checks that its files exist. If they do not exist, the job skips its
 # checks and passes. Thus the workflow passes on the scaffold of Phase 0.
 #
-# - Build: needs apps/web/vite.config.ts (Phase 2).
+# - Build: needs vite.config.ts (Phase 2).
 # - Database Types Drift, Schema Drift, pgTAP: need compose.yaml (Phase 1).
 
 name: PR Check
@@ -26,7 +26,7 @@ permissions:
   contents: read
 
 env:
-  # The migration script validates the env of the web app (apps/web/src/env.ts).
+  # The migration script validates the env of the web app (src/env.ts).
   # The database jobs need only DATABASE_URL. The other values are dummies.
   DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:54332/postgres
   POSTGREST_URL: http://127.0.0.1:54331
@@ -85,10 +85,10 @@ jobs:
       - name: Check that the web app exists (Phase 2)
         id: ready
         run: |
-          if [ -f apps/web/vite.config.ts ]; then
+          if [ -f vite.config.ts ]; then
             echo "ready=true" >> "$GITHUB_OUTPUT"
           else
-            echo "::notice::apps/web/vite.config.ts does not exist. Skip the build."
+            echo "::notice::vite.config.ts does not exist. Skip the build."
           fi
       - if: steps.ready.outputs.ready == 'true'
         uses: ./.github/actions/setup
@@ -113,12 +113,12 @@ jobs:
       - name: Start the local stack and apply the migrations
         if: steps.ready.outputs.ready == 'true'
         run: yarn db:start
-      - name: Verify packages/db/src/database.types.ts is up to date
+      - name: Verify src/db/database.types.ts is up to date
         if: steps.ready.outputs.ready == 'true'
         run: |
           yarn generate
-          git diff --exit-code packages/db/src/database.types.ts || {
-            echo "::error file=packages/db/src/database.types.ts::The database types are stale. Run 'yarn generate' (needs 'yarn db:start') and commit the result."
+          git diff --exit-code src/db/database.types.ts || {
+            echo "::error file=src/db/database.types.ts::The database types are stale. Run 'yarn generate' (needs 'yarn db:start') and commit the result."
             exit 1
           }
 

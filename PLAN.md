@@ -57,7 +57,7 @@ Phase 0 copies this glossary into `AGENTS.md`.
 
 ```
                  ┌──────────────┐  OIDC   ┌─────────────────────┐
-  browser ──────▶│   apps/web   │────────▶│ Pocket ID (homelab) │
+  browser ──────▶│    ledger    │────────▶│ Pocket ID (homelab) │
                  │ TanStack     │         └─────────────────────┘
                  │ Start        │
                  └──┬────────┬──┘
@@ -71,13 +71,13 @@ Phase 0 copies this glossary into `AGENTS.md`.
                  └──────────────────────────────────────┘
 ```
 
-- **apps/web** shows the UI and runs the server functions. It is the only app. There is no
-  worker and no job queue.
+- **The app** (`src/`) shows the UI and runs the server functions. It is the only process
+  of `ledger`. There is no worker and no job queue.
 - **Postgres and PostgREST** hold the data, as in stripclub (stripclub D11). The server
   functions call PostgREST with a short HS256 JWT: `role: authenticated`, `sub: <user ID>`.
 - **better-auth** does the OIDC sign-in with Pocket ID, as in stripclub (stripclub D6). It
   uses a direct `pg` connection to the schema `better_auth`.
-- **packages/core** holds the money logic with no I/O: the parse and the format of amounts,
+- **`src/core`** holds the money logic with no I/O: the parse and the format of amounts,
   the currency conversion, the split into shares, and the balances.
 
 ## Decisions
@@ -86,7 +86,7 @@ Phase 0 copies this glossary into `AGENTS.md`.
 
 Use the stack of stripclub with no change, unless this file tells otherwise:
 
-- Node 24, Yarn 4 workspaces, TypeScript 6 strict.
+- Node 24, Yarn 4 (one package, no workspaces), TypeScript 6 strict.
 - TanStack Start (TanStack Router, Vite, Nitro), React 19 with the React Compiler.
 - Mantine 9 (`@mantine/core`, `@mantine/hooks`, `@mantine/dates`), CSS Modules with
   `classnames/bind`, React Hook Form with Zod.
@@ -94,8 +94,8 @@ Use the stack of stripclub with no change, unless this file tells otherwise:
 - pg-delta for migrations, pgTAP for database tests, Vitest for TypeScript.
 - release-it and a GitHub workflow that builds the Docker image.
 
-Remove these parts of stripclub: `apps/worker`, `packages/net`, pg-boss, ffmpeg, OpenRouter,
-the media volume, and the private feed routes.
+Remove these parts of stripclub: the workspaces, `apps/worker`, `packages/net`, pg-boss,
+ffmpeg, OpenRouter, the media volume, and the private feed routes.
 
 Reason: the same stack in two projects lets us copy files with small changes. Each fix in one
 project is easy to move to the other.
@@ -103,9 +103,9 @@ project is easy to move to the other.
 ### D2: Repository shape
 
 ```
-apps/web/            TanStack Start app (UI, server functions, auth routes)
-packages/core/       Money logic and shared types, with no I/O
-packages/db/         PostgREST client and generated database types
+src/                 TanStack Start app (UI, server functions, auth routes)
+src/core/            Money logic and shared types, with no I/O
+src/db/              PostgREST client and generated database types
 db/schemas/          Declarative schema: the current shape of the database
 db/migrations/       Generated migrations: the history of the changes
 db/tests/            pgTAP tests
@@ -114,14 +114,17 @@ deploy/              Docker Compose file, Dockerfile, Makefile, README for the h
 scripts/             diff-database.sh, test-database.sh
 ```
 
-Keep `packages/db` apart from `apps/web`, as in stripclub. A later worker (for example a
-nightly export) can then use it.
+`ledger` is one package with one `package.json` at the root, with no Yarn workspaces. It has
+only one app and no worker, thus workspaces give no advantage. The folders `src/core` and
+`src/db` keep the boundaries of the stripclub packages `packages/core` and `packages/db`:
+`src/core` imports nothing from the rest of `src/`, and `src/db` imports only from
+`src/core`.
 
 ### D3: Users and access
 
 - Users sign in with Pocket ID through better-auth (generic OIDC plugin, provider ID
   `pocket-id`, PKCE). The callback URL is `<APP_URL>/api/auth/callback/pocket-id`. Copy
-  `apps/web/src/server/auth.ts` of stripclub.
+  `apps/web/src/server/auth.ts` of stripclub to `src/server/auth.ts`.
 - The OIDC client of `ledger` in Pocket ID allows only one Pocket ID user group. Thus Pocket
   ID decides who has access. There is no email or password sign-in, and no invitation.
 - A user is not a member. No column links `better_auth.users` to `members`.
@@ -142,7 +145,7 @@ nightly export) can then use it.
 - Store each amount as `bigint` in minor units. Do not use `float`, and do not use
   `parseFloat`.
 - The amount is positive. A refund is a transaction with the sides swapped.
-- `packages/core` converts the text of the amount input to minor units with string
+- `src/core` converts the text of the amount input to minor units with string
   arithmetic. It reads the number of decimals of a currency from
   `Intl.NumberFormat(...).resolvedOptions().maximumFractionDigits`.
 - The server formats amounts with `Intl.NumberFormat`, with the locale `APP_LOCALE` (for
@@ -161,7 +164,7 @@ settings of the space:
 - A transaction can use only a currency of its space. A space currency with transactions
   cannot be removed. The UI disables the remove button and tells why.
 - The user can select a different default currency. The form then shows each rate again,
-  relative to the new default currency (`rebaseRates` in `packages/core`). The user can
+  relative to the new default currency (`rebaseRates` in `src/core`). The user can
   correct the rates before the save.
 - A change of a rate changes the balances of all old transactions in that currency. This
   agrees with D7: the current configuration of the space applies to all its transactions.
@@ -173,7 +176,7 @@ Rates and conversion:
 
 - Store a rate as `numeric(18, 8)`, greater than 0. PostgREST gives a `numeric` as a JSON
   number, thus a client can lose digits. Select the rate as text: `rate::text`.
-- `convertAmount` in `packages/core` converts the amount with `bigint` arithmetic:
+- `convertAmount` in `src/core` converts the amount with `bigint` arithmetic:
   `amount_minor × rate × 10^(default decimals − currency decimals)`. It rounds half away from
   zero to a whole minor unit of the default currency.
 - The balance calculation converts each transaction first, then splits the converted amount
@@ -254,7 +257,7 @@ A delete of a transaction is a hard delete, after a confirmation. The parties go
 
 ### D10: Balances
 
-- `packages/core/src/balances/calculateBalances.ts` calculates the balance of each member in
+- `src/core/balances/calculateBalances.ts` calculates the balance of each member in
   the default currency. Its input is the members, the alias members, the space currencies,
   the transactions, and the parties. It is a pure function with unit tests.
 - The server function `getSpaceServerFn` loads all rows of one space and returns the
@@ -384,7 +387,7 @@ All pages use Mantine, inside one `AppShell` with the product name and a sign-ou
     (`Select` of the space currencies, the default currency first), Date (`DateInput`).
   - Paid by, Paid to: one `MultiSelect` each, with the groups "Members" and "Aliases". Paid
     to has an "Everyone" button (D6).
-  - A preview line under the form, from `packages/core`: "Obamas' Shared Account and Donald
+  - A preview line under the form, from `src/core`: "Obamas' Shared Account and Donald
     each paid €50.00. Each of 4 members got €25.00."
   - "Save", and on an existing transaction "Delete". Delete opens a `ConfirmModal` on top of
     the drawer (`Modal.Stack`).
@@ -430,7 +433,7 @@ stack (D1).
 - **Modules:** Name a module after its main export. No barrel files. Give each export a name
   that is clear at the call site, for example `createUserPostgrestClient`.
 - **Server functions:** Put each TanStack server function in
-  `apps/web/src/serverFunctions/`, one for each file. Give its export the suffix `ServerFn`,
+  `src/serverFunctions/`, one for each file. Give its export the suffix `ServerFn`,
   and give the file the same name. Example: `serverFunctions/saveTransactionServerFn.ts`
   exports `saveTransactionServerFn`. This is the TanStack form of the `Action` suffix of
   Clarity.
@@ -446,7 +449,7 @@ stack (D1).
 - **CSS:** One CSS module for one component, imported last. Use `data-*` attributes for
   modifiers, logical properties, one value for each shorthand, native nesting, and the
   `@media` rule inside its selector. Put each global z-index in a token.
-- **Env:** Read env variables only in `apps/web/src/env.ts` (`@t3-oss/env-core` and Zod).
+- **Env:** Read env variables only in `src/env.ts` (`@t3-oss/env-core` and Zod).
 - **Tests:** Test pure functions with no mocks. Do not unit test I/O.
 - **Scripts:** Top-level await, `parseArgs` with named flags, and no top-level catch.
 
@@ -457,8 +460,8 @@ stack (D1).
 - [x] Copy from stripclub: `package.json` (without the worker scripts), `.node-version`,
       `.yarnrc.yml`, `tsconfig.json`, ESLint, Prettier, Stylelint, Vitest, `.gitignore`,
       `.dockerignore`, `.release-it.mjs`.
-- [x] Workspaces `apps/web`, `packages/core`, `packages/db`, with the package scope
-      `@ledger/`.
+- [x] One package with the folders `src/core` and `src/db` (D2). The first version had the
+      workspaces `apps/web`, `packages/core`, and `packages/db`. They are removed.
 - [x] `AGENTS.md` with the glossary, the stack, the commands, and the conventions above.
       `CLAUDE.md` with `@AGENTS.md`.
 - [x] `.claude/launch.json` for `yarn dev` on port 3001, with `fnm exec`.
@@ -469,12 +472,14 @@ Notes:
 - Stylelint has the rules of Clarity for logical properties and shorthands
   (`stylelint-use-logical`), because Clarity wins for the conventions. `lint:stylelint` has
   `--allow-empty-input`, because the repository has no CSS file yet.
-- `lint:typescript` is `tsc6` only. Phase 2 adds `apps/web/tsconfig.json` and
-  `&& tsc6 -p apps/web`, as in stripclub.
-- `apps/web` and `packages/db` have only a `package.json` and an empty `src/`.
-  `packages/core` has `isCurrencyCode` and its test, so that `yarn test` has a test to run.
+- `tsconfig.json` has the Node settings of the stripclub root (`nodenext`, no DOM). Phase 2
+  changes it to the settings of `apps/web/tsconfig.json` of stripclub (`bundler`, DOM, JSX,
+  the TanStack Router plugin).
+- `package.json` has the scripts `dev`, `build`, and `start` of `apps/web` of stripclub.
+  Phase 2 adds `vite.config.ts` and the dependencies of the app.
+- `src/core` has `isCurrencyCode` and its test, so that `yarn test` has a test to run.
 - In `pr-check.yaml`, the jobs Build, Database Types Drift, Schema Drift, and pgTAP first
-  check that their files exist (`apps/web/vite.config.ts` for Phase 2, `compose.yaml` for
+  check that their files exist (`vite.config.ts` for Phase 2, `compose.yaml` for
   Phase 1). If the files do not exist, the job skips its checks and passes.
 - The env block of `pr-check.yaml` uses the ports of D14 and has no `MEDIA_DIR`. Phase 2
   adds the env variables of `env.ts` that the migration script needs.
@@ -485,7 +490,7 @@ Notes:
 - [ ] `compose.yaml` (dev): Postgres 17 with pgTAP, PostgREST, and the `types` service, on
       the ports of D14.
 - [ ] `scripts/diff-database.sh`, `scripts/test-database.sh`, and
-      `apps/web/src/scripts/migrateDatabase.ts`, from stripclub.
+      `src/scripts/migrateDatabase.ts`, from stripclub.
 - [ ] Schema files: roles, `better_auth` tables, the enum `transaction_side`, the tables of
       the data model, `app_users`, the trigger functions, the functions of D9, the policies,
       and the grants.
@@ -500,7 +505,7 @@ Notes:
   - `save_transaction` refuses an empty side. `save_space_currencies` refuses zero or two
     default currencies, and a default rate that is not `1`.
   - The delete rules of members, aliases, and space currencies.
-- [ ] `yarn generate` writes `packages/db/src/database.types.ts`.
+- [ ] `yarn generate` writes `src/db/database.types.ts`.
 - [ ] Seed: one user with the email of a Pocket ID account, the space "Washington" with
       Barack, Michelle, Donald, and Melania, the alias "Obamas' Shared Account", the
       currencies EUR (default) and USD, and some transactions in both currencies.
@@ -517,7 +522,7 @@ Notes:
 
 ### Phase 3: Money logic
 
-All in `packages/core`, with unit tests:
+All in `src/core`, with unit tests:
 
 - [ ] `parseAmount` and `formatAmount` (D4). Test currencies with 0, 2, and 3 decimals.
 - [ ] `parseRate`, `convertAmount`, and `rebaseRates` (D5). Test the rounding, and a
@@ -547,7 +552,8 @@ All in `packages/core`, with unit tests:
 
 ### Phase 6: Deployment
 
-- [ ] `deploy/web.Dockerfile` (Alpine, Node 24, `yarn workspaces focus`), from stripclub.
+- [ ] `deploy/web.Dockerfile` (Alpine, Node 24, `yarn workspaces focus --production`), from
+      stripclub.
 - [ ] `deploy/compose.yaml` with `db`, `rest`, `ledger-web`, and `db-dump` (D12, D13).
 - [ ] `deploy/generate-secrets.sh`, `deploy/Makefile`, `deploy/README.md`.
 - [ ] `docker-publish.yaml` and release-it. First release and digest pins.

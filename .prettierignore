@@ -1,6 +1,6 @@
 .yarn
 tmp
-apps/web/.output
-apps/web/.nitro
-apps/web/.tanstack
-apps/web/src/routeTree.gen.ts
+.output
+.nitro
+.tanstack
+src/routeTree.gen.ts

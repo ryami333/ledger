@@ -714,24 +714,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@ledger/core@workspace:packages/core":
-  version: 0.0.0-use.local
-  resolution: "@ledger/core@workspace:packages/core"
-  languageName: unknown
-  linkType: soft
-
-"@ledger/db@workspace:packages/db":
-  version: 0.0.0-use.local
-  resolution: "@ledger/db@workspace:packages/db"
-  languageName: unknown
-  linkType: soft
-
-"@ledger/web@workspace:apps/web":
-  version: 0.0.0-use.local
-  resolution: "@ledger/web@workspace:apps/web"
-  languageName: unknown
-  linkType: soft
-
 "@napi-rs/wasm-runtime@npm:^1.1.6":
   version: 1.2.7
   resolution: "@napi-rs/wasm-runtime@npm:1.2.7"
