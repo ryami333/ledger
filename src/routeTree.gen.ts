@@ -14,6 +14,8 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as AppIndexRouteImport } from './routes/_app.index'
 import { Route as AuthSignInRouteImport } from './routes/auth.sign-in'
 import { Route as ApiAuthSplatRouteImport } from './routes/api.auth.$'
+import { Route as AppSpacesSpaceIdIndexRouteImport } from './routes/_app.spaces.$spaceId.index'
+import { Route as AppSpacesSpaceIdSettingsRouteImport } from './routes/_app.spaces.$spaceId.settings'
 
 const AppRoute = AppRouteImport.update({
   id: '/_app',
@@ -39,18 +41,33 @@ const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   path: '/api/auth/$',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AppSpacesSpaceIdIndexRoute = AppSpacesSpaceIdIndexRouteImport.update({
+  id: '/spaces/$spaceId/',
+  path: '/spaces/$spaceId/',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppSpacesSpaceIdSettingsRoute =
+  AppSpacesSpaceIdSettingsRouteImport.update({
+    id: '/spaces/$spaceId/settings',
+    path: '/spaces/$spaceId/settings',
+    getParentRoute: () => AppRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
   '/login': typeof LoginRoute
   '/auth/sign-in': typeof AuthSignInRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/spaces/$spaceId/settings': typeof AppSpacesSpaceIdSettingsRoute
+  '/spaces/$spaceId/': typeof AppSpacesSpaceIdIndexRoute
 }
 export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/auth/sign-in': typeof AuthSignInRoute
   '/': typeof AppIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/spaces/$spaceId/settings': typeof AppSpacesSpaceIdSettingsRoute
+  '/spaces/$spaceId': typeof AppSpacesSpaceIdIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -59,14 +76,35 @@ export interface FileRoutesById {
   '/auth/sign-in': typeof AuthSignInRoute
   '/_app/': typeof AppIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/_app/spaces/$spaceId/settings': typeof AppSpacesSpaceIdSettingsRoute
+  '/_app/spaces/$spaceId/': typeof AppSpacesSpaceIdIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/login' | '/auth/sign-in' | '/api/auth/$'
+  fullPaths:
+    | '/'
+    | '/login'
+    | '/auth/sign-in'
+    | '/api/auth/$'
+    | '/spaces/$spaceId/settings'
+    | '/spaces/$spaceId/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/login' | '/auth/sign-in' | '/' | '/api/auth/$'
+  to:
+    | '/login'
+    | '/auth/sign-in'
+    | '/'
+    | '/api/auth/$'
+    | '/spaces/$spaceId/settings'
+    | '/spaces/$spaceId'
   id:
-    '__root__' | '/_app' | '/login' | '/auth/sign-in' | '/_app/' | '/api/auth/$'
+    | '__root__'
+    | '/_app'
+    | '/login'
+    | '/auth/sign-in'
+    | '/_app/'
+    | '/api/auth/$'
+    | '/_app/spaces/$spaceId/settings'
+    | '/_app/spaces/$spaceId/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -113,15 +151,33 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAuthSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_app/spaces/$spaceId/': {
+      id: '/_app/spaces/$spaceId/'
+      path: '/spaces/$spaceId'
+      fullPath: '/spaces/$spaceId/'
+      preLoaderRoute: typeof AppSpacesSpaceIdIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/spaces/$spaceId/settings': {
+      id: '/_app/spaces/$spaceId/settings'
+      path: '/spaces/$spaceId/settings'
+      fullPath: '/spaces/$spaceId/settings'
+      preLoaderRoute: typeof AppSpacesSpaceIdSettingsRouteImport
+      parentRoute: typeof AppRoute
+    }
   }
 }
 
 interface AppRouteChildren {
   AppIndexRoute: typeof AppIndexRoute
+  AppSpacesSpaceIdSettingsRoute: typeof AppSpacesSpaceIdSettingsRoute
+  AppSpacesSpaceIdIndexRoute: typeof AppSpacesSpaceIdIndexRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
   AppIndexRoute: AppIndexRoute,
+  AppSpacesSpaceIdSettingsRoute: AppSpacesSpaceIdSettingsRoute,
+  AppSpacesSpaceIdIndexRoute: AppSpacesSpaceIdIndexRoute,
 }
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)

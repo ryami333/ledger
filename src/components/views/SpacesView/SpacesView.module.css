@@ -1,0 +1,11 @@
+.card {
+  color: inherit;
+  text-decoration: none;
+
+  &:hover {
+    border-color: var(
+      --mantine-color-default-border-hover,
+      var(--mantine-color-gray-5)
+    );
+  }
+}

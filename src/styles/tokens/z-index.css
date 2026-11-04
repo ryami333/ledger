@@ -5,8 +5,13 @@
  *
  * Mantine's Modal.Stack takes its base z-index as a number. Thus Modal.tsx and
  * Drawer.tsx repeat the values of --z-index--modal and --z-index--drawer.
+ *
+ * The popover layer holds the dropdowns, menus, and tooltips of Mantine. It is
+ * above the modals, so that a Select in a modal shows its options.
+ * src/lib/mantineTheme.ts repeats its value.
  */
 :root {
   --z-index--drawer: 1500;
   --z-index--modal: 1600;
+  --z-index--popover: 1700;
 }

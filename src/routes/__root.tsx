@@ -1,3 +1,4 @@
+import { mantineTheme } from "../lib/mantineTheme.ts";
 import mainCssUrl from "../styles/main.css?url";
 import mantineCoreCss from "@mantine/core/styles.layer.css?url";
 import mantineDatesCss from "@mantine/dates/styles.layer.css?url";
@@ -49,7 +50,7 @@ function RootDocument({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   return (
-    <MantineProvider defaultColorScheme="auto">
+    <MantineProvider theme={mantineTheme} defaultColorScheme="auto">
       <Outlet />
     </MantineProvider>
   );

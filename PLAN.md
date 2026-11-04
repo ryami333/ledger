@@ -636,9 +636,42 @@ Notes:
 
 ### Phase 4: Spaces, members, aliases, and currencies
 
-- [ ] `SpacesView`: the list and the "New space" modal.
-- [ ] `SpaceSettingsView`: members, aliases, currencies, the delete of the space.
-- [ ] Server functions with the user client. Each write returns an error on an empty result.
+- [x] `SpacesView`: the list and the "New space" modal.
+- [x] `SpaceSettingsView`: members, aliases, currencies, the delete of the space.
+- [x] Server functions with the user client. Each write returns an error on an empty result.
+
+Notes:
+
+- The server functions are `getSpacesServerFn`, `createSpaceServerFn`, `getSpaceServerFn`,
+  `getSpaceSettingsServerFn`, `updateSpaceServerFn`, `deleteSpaceServerFn`,
+  `saveMemberServerFn`, `setMemberArchivedServerFn`, `deleteMemberServerFn`,
+  `saveAliasServerFn`, `deleteAliasServerFn`, and `saveSpaceCurrenciesServerFn`.
+- A server function validates its input with the form schema of `src/core`. The client
+  sends the output of the form, thus each schema of Phase 4 accepts its own output.
+  `optionalTextSchema` accepts `null` for this reason.
+- `src/server/throwDatabaseError.ts` logs only the Postgres error code. The UI shows a text
+  from `chooseDatabaseErrorMessage` (`src/core/errors`), not the text of the Postgres error.
+  A unique name gives "Another member of the space has this name.", and a row in use gives
+  a text that tells why.
+- postgres-meta types each function argument as not nullable. `src/db/LedgerDatabase.ts`
+  makes `p_description`, `p_alias_id`, and `p_transaction_id` nullable. The PostgREST client
+  uses `LedgerDatabase`.
+- The loaders return `locale` (`APP_LOCALE`), because `env.ts` is server only.
+- `/spaces/$spaceId` shows a placeholder `SpaceView` with the title and a link to the
+  settings. Phase 5 adds the balances and the transactions. The "Edit space" menu of the UI
+  section is the Details section of the settings page for now.
+- The settings page also has a Details section for the title and the description.
+- The Delete and Remove buttons of a row in use are disabled, with a tooltip that tells why.
+  The default currency cannot be removed: select a different default currency first.
+- `src/lib/mantineTheme.ts` gives the Mantine popovers (Select, MultiSelect, Menu, Tooltip)
+  the z-index `--z-index--popover` (1700), above the modals. With the Mantine default
+  (300), a Select in a modal shows its options below the modal.
+- The pickers have `selectFirstOptionOnChange`, so that Enter selects the first match.
+- Tested by hand in Chrome: make a space with two members, add a member, refuse a name
+  that differs only in capital letters, rename, archive, add and delete an alias, add USD
+  at 0.92, select USD as the default currency (EUR becomes 1.08695652), delete a member,
+  change the title, and delete the space. On the seed space, the Delete and Remove buttons
+  of the rows in use are disabled.
 
 ### Phase 5: Transactions and balances
 
