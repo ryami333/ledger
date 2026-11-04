@@ -1,0 +1,67 @@
+# Builds the image of the web app and publishes it to the GitHub Container
+# Registry (PLAN.md, D12):
+#
+#   ghcr.io/<owner>/ledger-web
+#
+# A version tag like v1.0.0 starts the workflow. `yarn release` pushes such a
+# tag (see .release-it.mjs).
+#
+# The image is for linux/amd64 only, because the homelab host has an Intel
+# CPU. The image gets the version tags and the commit SHA, but no `latest`
+# tag. The host pins a tag and a digest. GITHUB_TOKEN gives the permissions
+# below. No other secret is necessary.
+
+name: Build & Publish Docker image
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+permissions:
+  contents: read # checkout
+  packages: write # push to ghcr.io
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v7
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata (tags and labels)
+        id: meta
+        uses: docker/metadata-action@v6
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/ledger-web
+          # The semver tags add `latest` by default. Turn it off.
+          flavor: |
+            latest=false
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
+            type=sha,format=long
+
+      - name: Build and push (linux/amd64)
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: deploy/web.Dockerfile
+          push: true
+          platforms: linux/amd64
+          cache-from: type=gha,scope=web
+          cache-to: type=gha,scope=web,mode=max
+          labels: ${{ steps.meta.outputs.labels }}
+          tags: ${{ steps.meta.outputs.tags }}
