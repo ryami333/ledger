@@ -675,11 +675,52 @@ Notes:
 
 ### Phase 5: Transactions and balances
 
-- [ ] `SpaceView`: header, balances panel, transaction list.
-- [ ] Transaction drawer: add, edit, delete, with the search param `transaction`.
-- [ ] The preview line under the form.
-- [ ] Test by hand: add, edit the date, change an alias, change a rate, change the default
+- [x] `SpaceView`: header, balances panel, transaction list.
+- [x] Transaction drawer: add, edit, delete, with the search param `transaction`.
+- [x] The preview line under the form.
+- [x] Test by hand: add, edit the date, change an alias, change a rate, change the default
       currency, delete, and check the balances after each step.
+
+Notes:
+
+- The new server functions are `saveTransactionServerFn` and `deleteTransactionServerFn`.
+  `getSpaceServerFn` now loads all rows of the space in one PostgREST query and returns the
+  balances (D10).
+- `getSpaceServerFn` converts `amount_minor` with `BigInt(...)` and adds
+  `converted_amount_minor` to each transaction. It sends `transaction_date` as the text
+  `YYYY-MM-DD`, because a `Temporal` object cannot go from the server to the browser. A
+  `bigint` can.
+- The loader also returns `defaultTransactionDate` (today in `APP_TIME_ZONE`) and
+  `defaultCurrency`, because `env.ts` is server only.
+- `transactionFormSchema` does not accept its own output (a `bigint` and a
+  `Temporal.PlainDate`). Thus the client sends the form input (`form.getValues()`) to
+  `saveTransactionServerFn`, and the server parses it with the same schema. The client
+  validates with the same schema before the send.
+- The route has a Zod search schema: `transaction` is `new` or a UUID. A value that is not
+  valid closes the drawer. An ID that is not in the space also closes the drawer.
+- Each row of the transaction list is a link to `?transaction=<id>`. Thus a reload, a link,
+  and the back button of the browser open and close the same drawer.
+- `SpaceView` keeps the last transaction while the drawer slides out, and gives the form a
+  new key on each open. The form then starts again from the values of the transaction.
+- The drawer and the delete `ConfirmModal` are in one `Modal.Stack` (`transaction-drawer`,
+  `transaction-delete`). Escape closes only the confirmation. A close of the drawer, for
+  example with the back button, also closes the confirmation.
+- The party picker has the groups "Members" and "Aliases". An archived member is an option
+  only when the transaction already has the member (D8). "Everyone" replaces Paid to with
+  each member that is not archived (D6).
+- The preview line splits the amount in the currency of the transaction, not in the default
+  currency (`describeTransactionPreview`). `toPartyRow` in `partyValueHelpers.ts` converts a
+  picker value to a party row for it.
+- The "Edit space" menu has one item, a link to the settings page.
+- Tested by hand in Chrome on "Washington". Each step gave the expected balances, and the
+  balances summed to zero: add €40.00 paid by Donald for everyone, change the date to
+  1 Oct 2026 and the payer to the alias (the row moves to the end of the list), set USD to
+  1.00 (the museum row shows "(€40.00)"), set USD to 0.92 and select USD as the default
+  currency (the balances show in US$), and delete the transaction. At the end, EUR is the
+  default currency again, and USD is 0.92, as in the seed.
+- The dev server of a different session cached a failed import of `TransactionDrawer.tsx`,
+  because `SpaceView.tsx` was written first. The page then rendered only in the browser. A
+  `touch` of the files fixed it. Look for "Switched to client rendering" in the console.
 
 ### Phase 6: Deployment
 
