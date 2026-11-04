@@ -1,0 +1,12 @@
+/*
+ * The z-index of each layer in the root stacking context (AGENTS.md,
+ * "Styling conventions"). The steps are 100, so a new layer can go between
+ * two layers.
+ *
+ * Mantine's Modal.Stack takes its base z-index as a number. Thus Modal.tsx and
+ * Drawer.tsx repeat the values of --z-index--modal and --z-index--drawer.
+ */
+:root {
+  --z-index--drawer: 1500;
+  --z-index--modal: 1600;
+}

@@ -1,0 +1,72 @@
+/* Mantine sets the flex basis of the frame from --drawer-size, and gives it
+ * the full height of the viewport. */
+.content {
+  --drawer-size: 480px;
+
+  display: flex;
+  flex-direction: column;
+  box-shadow: var(--mantine-shadow-lg);
+  background: var(--mantine-color-body);
+  overflow: hidden;
+  color: var(--mantine-color-text);
+
+  &[data-width="wide"] {
+    --drawer-size: 720px;
+  }
+}
+
+.header {
+  display: flex;
+  flex-shrink: 0;
+  align-items: flex-start;
+  gap: var(--mantine-spacing-sm);
+  padding-inline: var(--mantine-spacing-md);
+  padding-block-start: var(--mantine-spacing-md);
+  padding-block-end: var(--mantine-spacing-sm);
+}
+
+.titleGroup {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--mantine-spacing-xs);
+  min-width: 0;
+  overflow-wrap: break-word;
+}
+
+.title {
+  margin: 0;
+  font-weight: 600;
+  font-size: var(--mantine-font-size-lg);
+}
+
+.description {
+  margin: 0;
+  color: var(--mantine-color-dimmed);
+  font-size: var(--mantine-font-size-sm);
+  white-space: pre-wrap;
+}
+
+.inner {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--mantine-spacing-sm);
+  padding-inline: var(--mantine-spacing-md);
+  padding-block-start: var(--mantine-spacing-xs);
+  padding-block-end: var(--mantine-spacing-md);
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.footer {
+  display: flex;
+  flex-shrink: 0;
+  justify-content: flex-end;
+  align-items: center;
+  gap: var(--mantine-spacing-xs);
+  margin-block-start: auto;
+  border-block-start: 1px solid var(--mantine-color-default-border);
+  padding-inline: var(--mantine-spacing-md);
+  padding-block: var(--mantine-spacing-sm);
+}
