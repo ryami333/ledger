@@ -1,0 +1,17 @@
+.header {
+  padding-inline: var(--mantine-spacing-md);
+  height: 100%;
+}
+
+.brand {
+  color: inherit;
+  font-weight: 700;
+  font-size: var(--mantine-font-size-lg);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.content {
+  margin-inline: auto;
+  max-width: 960px;
+}
