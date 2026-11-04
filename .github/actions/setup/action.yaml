@@ -1,0 +1,17 @@
+# Installs Node from .node-version and the Yarn dependencies. Each job of
+# pr-check.yaml uses it after the checkout.
+
+name: Set up Node and Yarn
+description: Installs Node, enables Corepack, and installs the dependencies.
+
+runs:
+  using: composite
+  steps:
+    - run: corepack enable
+      shell: bash
+    - uses: actions/setup-node@v7
+      with:
+        node-version-file: ".node-version"
+        cache: "yarn"
+    - run: yarn install --immutable
+      shell: bash

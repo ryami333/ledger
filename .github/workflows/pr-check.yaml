@@ -1,0 +1,184 @@
+# Runs the quality gates of AGENTS.md on each pull request to main and on each
+# push to main: lint, the tests, the build, and the database checks. The
+# database jobs start the local stack of compose.yaml, as on a development
+# machine.
+#
+# Some jobs need files that a later phase of PLAN.md adds. Each of these jobs
+# first checks that its files exist. If they do not exist, the job skips its
+# checks and passes. Thus the workflow passes on the scaffold of Phase 0.
+#
+# - Build: needs apps/web/vite.config.ts (Phase 2).
+# - Database Types Drift, Schema Drift, pgTAP: need compose.yaml (Phase 1).
+
+name: PR Check
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  # The migration script validates the env of the web app (apps/web/src/env.ts).
+  # The database jobs need only DATABASE_URL. The other values are dummies.
+  DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:54332/postgres
+  POSTGREST_URL: http://127.0.0.1:54331
+  POSTGREST_JWT_SECRET: super-secret-jwt-token-with-at-least-32-characters-long
+  BETTER_AUTH_SECRET: ci-dummy-secret-with-at-least-32-characters
+  POCKET_ID_ISSUER: https://pocket-id.example.com
+  POCKET_ID_CLIENT_ID: ci-dummy-client-id
+  POCKET_ID_CLIENT_SECRET: ci-dummy-client-secret
+
+jobs:
+  prettier:
+    name: Formatting
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup
+      - run: yarn lint:prettier
+
+  eslint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup
+      - run: yarn lint:eslint
+
+  typescript:
+    name: Typecheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup
+      - run: yarn lint:typescript
+
+  stylelint:
+    name: Stylelint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup
+      - run: yarn lint:stylelint
+
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup
+      - run: yarn test
+
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Check that the web app exists (Phase 2)
+        id: ready
+        run: |
+          if [ -f apps/web/vite.config.ts ]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice::apps/web/vite.config.ts does not exist. Skip the build."
+          fi
+      - if: steps.ready.outputs.ready == 'true'
+        uses: ./.github/actions/setup
+      - if: steps.ready.outputs.ready == 'true'
+        run: yarn build
+
+  types-drift:
+    name: Database Types Drift
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Check that the local stack exists (Phase 1)
+        id: ready
+        run: |
+          if [ -f compose.yaml ]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice::compose.yaml does not exist. Skip the database check."
+          fi
+      - if: steps.ready.outputs.ready == 'true'
+        uses: ./.github/actions/setup
+      - name: Start the local stack and apply the migrations
+        if: steps.ready.outputs.ready == 'true'
+        run: yarn db:start
+      - name: Verify packages/db/src/database.types.ts is up to date
+        if: steps.ready.outputs.ready == 'true'
+        run: |
+          yarn generate
+          git diff --exit-code packages/db/src/database.types.ts || {
+            echo "::error file=packages/db/src/database.types.ts::The database types are stale. Run 'yarn generate' (needs 'yarn db:start') and commit the result."
+            exit 1
+          }
+
+  schema-drift:
+    name: Schema Drift
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Check that the local stack exists (Phase 1)
+        id: ready
+        run: |
+          if [ -f compose.yaml ]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice::compose.yaml does not exist. Skip the database check."
+          fi
+      - if: steps.ready.outputs.ready == 'true'
+        uses: ./.github/actions/setup
+      - name: Start the database
+        # The diff script makes its own databases. It needs only Postgres.
+        if: steps.ready.outputs.ready == 'true'
+        run: docker compose up -d --wait db
+      - name: Verify db/migrations matches db/schemas
+        # The diff script writes a new migration only if db/schemas has a
+        # change that no migration applies. --allow-drops shows also a drop
+        # or a revoke in the migration, in place of a refusal.
+        if: steps.ready.outputs.ready == 'true'
+        run: |
+          yarn db:diff schema_drift --allow-drops
+          new_files="$(git status --porcelain --untracked-files=all db/migrations)"
+          if [ -n "$new_files" ]; then
+            echo "::error::db/schemas has changes that no migration applies. Run 'yarn db:diff <name>' and commit the file in db/migrations."
+            cat db/migrations/*_schema_drift.sql
+            exit 1
+          fi
+
+  pgtap:
+    name: pgTAP
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Check that the local stack exists (Phase 1)
+        id: ready
+        run: |
+          if [ -f compose.yaml ]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice::compose.yaml does not exist. Skip the database check."
+          fi
+      - if: steps.ready.outputs.ready == 'true'
+        uses: ./.github/actions/setup
+      - name: Load the migrations and the seed
+        # The seed files must load. The tests must not depend on the seed
+        # data, because they run in a separate database.
+        if: steps.ready.outputs.ready == 'true'
+        run: |
+          yarn db:start
+          yarn db:seed
+      - name: Run the pgTAP tests
+        # The script applies the migrations to a new database, thus it also
+        # tests the migrations of this pull request.
+        if: steps.ready.outputs.ready == 'true'
+        run: yarn db:test
