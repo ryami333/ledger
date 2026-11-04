@@ -1,0 +1,157 @@
+# The ledger stack for the homelab host: Postgres, PostgREST, the web app,
+# and the nightly database dump. README.md gives the setup steps.
+#
+# Start order: db -> ledger-web -> rest (PLAN.md, D12). The web app applies
+# the missing migrations before its server starts. Then it gives the role
+# authenticator its password. rest waits until the web app is healthy, thus
+# the migrations ran first.
+#
+# The secrets are Docker secrets: one file each in secrets/, which
+# generate-secrets.sh writes. Compose mounts them at /run/secrets/<name>. Each
+# service reads a secret through a <NAME>_FILE variable, or through the
+# @<path> syntax of PostgREST.
+
+name: ledger
+
+services:
+  db:
+    # The local stack uses the Debian image of the same version, with pgTAP
+    # (compose.yaml in the repository). The first migration makes the roles
+    # of PostgREST.
+    image: postgres:17.11-alpine3.24@sha256:266d3c257594e195b309ae9d1805e54c788f1d7b375f56bf6c367aac6c917e7b
+    restart: unless-stopped
+    secrets:
+      - postgres_password
+    environment:
+      # The entrypoint of the image reads the password of postgres from this
+      # file.
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+    volumes:
+      - ./data/postgres:/var/lib/postgresql/data
+    networks:
+      - ledger-internal
+    stop_grace_period: 120s
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "postgres", "-h", "localhost"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  rest:
+    image: postgrest/postgrest:v16.2@sha256:85258123312dc496ad4c2ed832154a65e9746f84df0d6d09b44229ff9230c08e
+    restart: unless-stopped
+    secrets:
+      - postgrest_db_uri
+      - postgrest_jwt_secret
+    environment:
+      # PostgREST reads a value that starts with @ from that file. The URI
+      # holds the password of the role authenticator. It is the same as the
+      # password of postgres, because the migration script sets it.
+      PGRST_DB_URI: "@/run/secrets/postgrest_db_uri"
+      PGRST_JWT_SECRET: "@/run/secrets/postgrest_jwt_secret"
+      PGRST_DB_SCHEMAS: public
+      PGRST_DB_ANON_ROLE: anon
+      PGRST_DB_MAX_ROWS: 1000
+    networks:
+      - ledger-internal
+    depends_on:
+      ledger-web:
+        condition: service_healthy
+
+  ledger-web:
+    # Set the tag and the digest after each release (README.md, "Images and
+    # releases"). The first release adds the digest.
+    image: ghcr.io/ryami333/ledger-web:0.1.0
+    platform: linux/amd64
+    restart: unless-stopped
+    init: true
+    secrets:
+      - postgres_password
+      - postgrest_jwt_secret
+      - better_auth_secret
+      - pocket_id_client_id
+      - pocket_id_client_secret
+    environment:
+      APP_URL: https://ledger.mitchryan.org
+      APP_LOCALE: en-IE
+      APP_TIME_ZONE: Europe/Berlin
+      POSTGREST_URL: http://rest:3000
+      # No password in the URL. pg reads PGPASSWORD.
+      DATABASE_URL: postgresql://postgres@db:5432/postgres
+      PGPASSWORD_FILE: /run/secrets/postgres_password
+      POSTGREST_JWT_SECRET_FILE: /run/secrets/postgrest_jwt_secret
+      BETTER_AUTH_SECRET_FILE: /run/secrets/better_auth_secret
+      POCKET_ID_ISSUER: https://auth.mitchryan.org
+      POCKET_ID_CLIENT_ID_FILE: /run/secrets/pocket_id_client_id
+      POCKET_ID_CLIENT_SECRET_FILE: /run/secrets/pocket_id_client_secret
+    networks:
+      - ledger-internal
+      - cloudflared-net
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:3000/login"]
+      interval: 30s
+      timeout: 5s
+      start_period: 60s
+      start_interval: 2s
+      retries: 3
+
+  # Writes a dump of the database each night at 02:30 UTC (PLAN.md, D13).
+  # Zerobyte copies data/backups. `make dump` writes one dump now.
+  db-dump:
+    # Use the image of db. pg_dump then has the same version as the server.
+    image: postgres:17.11-alpine3.24@sha256:266d3c257594e195b309ae9d1805e54c788f1d7b375f56bf6c367aac6c917e7b
+    restart: unless-stopped
+    # tini stops the shell loop on SIGTERM.
+    init: true
+    # The same UID as the owner of data/backups (README.md, "First setup").
+    user: "1000:1000"
+    secrets:
+      - postgres_password
+    environment:
+      PGHOST: db
+      PGUSER: postgres
+      PGDATABASE: postgres
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+      BACKUP_DIR: /backups
+    volumes:
+      - ./dump-database.sh:/usr/local/bin/dump-database.sh:ro
+      - ./data/backups:/backups
+    networks:
+      - ledger-internal
+    depends_on:
+      # The dump needs the schemas that the migrations make.
+      ledger-web:
+        condition: service_healthy
+    entrypoint: ["sh", "-c"]
+    command:
+      - |
+        while true; do
+          # The seconds from now to the next 02:30 UTC (9000 s after midnight).
+          seconds_of_day=$$(( $$(date -u +%s) % 86400 ))
+          wait_seconds=$$(( (9000 - seconds_of_day + 86400) % 86400 ))
+          sleep "$$(( wait_seconds == 0 ? 86400 : wait_seconds ))"
+          sh /usr/local/bin/dump-database.sh || echo "The nightly dump failed."
+        done
+
+networks:
+  ledger-internal:
+    driver: bridge
+  cloudflared-net:
+    external: true
+
+secrets:
+  postgres_password:
+    file: ./secrets/postgres_password
+  postgrest_db_uri:
+    file: ./secrets/postgrest_db_uri
+  postgrest_jwt_secret:
+    file: ./secrets/postgrest_jwt_secret
+  better_auth_secret:
+    file: ./secrets/better_auth_secret
+  pocket_id_client_id:
+    file: ./secrets/pocket_id_client_id
+  pocket_id_client_secret:
+    file: ./secrets/pocket_id_client_secret

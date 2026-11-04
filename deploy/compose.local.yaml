@@ -1,0 +1,22 @@
+# An override to test the stack on a development machine with the image of a
+# local build. It does not run on the homelab host. Usage, from a copy of
+# this folder (the stack writes data/ and secrets/):
+#
+#   docker build --platform linux/amd64 -f deploy/web.Dockerfile -t ledger-web:local .
+#   docker network create cloudflared-net
+#   ./generate-secrets.sh
+#   docker compose -f compose.yaml -f compose.local.yaml up -d
+#
+# The web app is then on http://localhost:3082. The port is not a port of the
+# local stack of the repository (PLAN.md, D14) or of stripclub (3080). A real
+# sign-in needs the callback URL
+# http://localhost:3082/api/auth/callback/pocket-id in Pocket ID.
+
+services:
+  ledger-web:
+    image: ledger-web:local
+    pull_policy: never
+    environment:
+      APP_URL: http://localhost:3082
+    ports:
+      - 127.0.0.1:3082:3000
