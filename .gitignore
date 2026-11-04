@@ -1,0 +1,21 @@
+# dependencies
+node_modules
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
+
+# env files
+.env*
+!.env.example
+
+# typescript
+*.tsbuildinfo
+
+# local output of scripts
+/tmp
+
+.DS_Store
+.claude/*
+!.claude/launch.json

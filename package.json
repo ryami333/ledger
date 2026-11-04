@@ -1,0 +1,55 @@
+{
+  "name": "ledger",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": "^24.22.2"
+  },
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "yarn workspace @ledger/web dev",
+    "build": "yarn workspace @ledger/web build",
+    "lint": "yarn lint:prettier && yarn lint:eslint && yarn lint:typescript && yarn lint:stylelint",
+    "lint:eslint": "eslint .",
+    "lint:prettier": "prettier . --check",
+    "lint:typescript": "tsc6",
+    "lint:stylelint": "stylelint \"**/*.css\" --allow-empty-input",
+    "format": "prettier . --write",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "db:start": "docker compose up -d --wait && yarn db:migrate",
+    "db:stop": "docker compose stop",
+    "db:reset": "docker compose down --volumes && docker compose up -d --wait && yarn db:migrate && yarn db:seed",
+    "db:seed": "cat db/seeds/*.sql | docker compose exec -T db psql -U postgres -v ON_ERROR_STOP=1 --quiet",
+    "db:migrate": "node --env-file-if-exists=.env apps/web/src/scripts/migrateDatabase.ts",
+    "db:diff": "scripts/diff-database.sh",
+    "db:test": "scripts/test-database.sh",
+    "db:psql": "docker compose exec db psql -U postgres",
+    "generate": "docker compose run --rm --quiet-pull types > packages/db/src/database.types.ts && prettier --write packages/db/src/database.types.ts",
+    "release": "release-it"
+  },
+  "devDependencies": {
+    "@prettier/plugin-oxc": "^0.2.2",
+    "@supabase/pg-delta": "1.0.0-alpha.60",
+    "@trivago/prettier-plugin-sort-imports": "^6.0.2",
+    "@types/node": "^24.13.3",
+    "eslint": "^10.7.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "prettier": "^3.9.6",
+    "prettier-plugin-css-order": "^2.2.0",
+    "release-it": "^21.0.0",
+    "stylelint": "^17.14.1",
+    "stylelint-config-recommended": "^18.0.0",
+    "stylelint-use-logical": "^2.1.3",
+    "stylelint-use-nesting": "^6.0.2",
+    "typescript": "npm:@typescript/typescript6@^6.0.2",
+    "typescript-eslint": "^8.65.0",
+    "vite": "^8.3.5",
+    "vitest": "^5.0.5"
+  },
+  "packageManager": "yarn@4.17.1"
+}

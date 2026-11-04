@@ -1,0 +1,19 @@
+# The image builds from the repository root. Send only what a build needs.
+**/node_modules
+**/.output
+**/.nitro
+**/.tanstack
+**/*.tsbuildinfo
+.git
+.github
+.claude
+.env*
+!.env.example
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
+tmp
+deploy/data
+deploy/secrets

@@ -410,8 +410,9 @@ stack (D1).
 - **Actor columns:** Set `created_by` with `set_actor_on_insert('created_by')` and
   `updated_by` with `set_actor_on_write('updated_by')`. Add a check to
   `db/tests/database/actor_columns.test.sql`.
-- **Timestamp columns:** Set them with `set_created_at` and `set_updated_at`, `BEFORE INSERT
-  OR UPDATE`. `timestamp_columns.test.sql` finds a table with no trigger.
+- **Timestamp columns:** Set them with `set_created_at` and `set_updated_at`, as
+  `BEFORE INSERT OR UPDATE` triggers. `timestamp_columns.test.sql` finds a table with no
+  trigger.
 - **RLS:** Read and write user data with the user client. Name a policy
   `<table>_<action>_<role>`, for example `transactions_select_authenticated`. Add
   `.select("id")` to a write, and treat an empty result as an error.
