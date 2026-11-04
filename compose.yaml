@@ -1,0 +1,74 @@
+# The local database for development: Postgres and PostgREST. The web app runs
+# on the host (`yarn dev`).
+#
+# `yarn db:start` starts the stack and applies the migrations. `yarn db:reset`
+# deletes the data, then applies the migrations and the seed. `yarn db:test`
+# runs the pgTAP tests in a separate database.
+#
+# The ports are not the ports of stripclub (PLAN.md, D14), thus both stacks
+# can run at the same time.
+#
+# Production uses the alpine image of the same Postgres version
+# (deploy/compose.yaml). This image adds pgTAP and pg_prove for the tests.
+
+name: ledger-dev
+
+services:
+  db:
+    build:
+      dockerfile_inline: |
+        FROM postgres:17.11-trixie@sha256:3b0cda93be7c8dba2ed484d19393d93845dc3dafb88973e248ba8e6d99d784e1
+        RUN apt-get update \
+          && apt-get install -y --no-install-recommends postgresql-17-pgtap libtap-parser-sourcehandler-pgtap-perl \
+          && rm -rf /var/lib/apt/lists/*
+    image: ledger-dev-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - 127.0.0.1:54332:5432
+    volumes:
+      - db-data:/var/lib/postgresql/data
+      - ./db/tests:/tests:ro
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "postgres", "-h", "localhost"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+
+  rest:
+    image: postgrest/postgrest:v16.2@sha256:85258123312dc496ad4c2ed832154a65e9746f84df0d6d09b44229ff9230c08e
+    restart: unless-stopped
+    environment:
+      # The migration script gives authenticator the password of
+      # DATABASE_URL. PostgREST retries until the first migration ran.
+      PGRST_DB_URI: postgres://authenticator:postgres@db:5432/postgres
+      # Only for development. It is the same as POSTGREST_JWT_SECRET in
+      # .env.example.
+      PGRST_JWT_SECRET: super-secret-jwt-token-with-at-least-32-characters-long
+      PGRST_DB_SCHEMAS: public
+      PGRST_DB_ANON_ROLE: anon
+      PGRST_DB_MAX_ROWS: 1000
+    ports:
+      - 127.0.0.1:54331:3000
+    depends_on:
+      db:
+        condition: service_healthy
+
+  # Writes the TypeScript types of the schema public to stdout. Only
+  # `yarn generate` runs it. postgres-meta is the generator of the Supabase
+  # CLI. PostgREST has no type generator.
+  types:
+    image: supabase/postgres-meta:v0.100.0@sha256:145325b7e39f8ef4931d6e8cfd3f6f4d655de09d72a2ccc96d9513542c2202bd
+    profiles: [tools]
+    command: ["node", "dist/server/server.js"]
+    environment:
+      PG_META_DB_URL: postgres://postgres:postgres@db:5432/postgres
+      PG_META_GENERATE_TYPES: typescript
+      PG_META_GENERATE_TYPES_INCLUDED_SCHEMAS: public
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  db-data:
