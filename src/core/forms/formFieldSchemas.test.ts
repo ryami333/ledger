@@ -19,6 +19,7 @@ describe("optionalTextSchema", () => {
   it("gives null for an empty text", () => {
     expect(optionalTextSchema.parse("  ")).toBeNull();
     expect(optionalTextSchema.parse(" Dinner ")).toBe("Dinner");
+    expect(optionalTextSchema.parse(null)).toBeNull();
   });
 });
 

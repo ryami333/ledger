@@ -1,9 +1,12 @@
-import type { Database } from "./database.types.ts";
+import type { LedgerDatabase } from "./LedgerDatabase.ts";
 import { signPostgrestJwt } from "./signPostgrestJwt.ts";
 import { PostgrestClient } from "@supabase/postgrest-js";
 
-/** A PostgREST client with the generated `Database` types. */
-export type PostgrestDbClient = PostgrestClient<Database>;
+/**
+ * A PostgREST client with the generated `Database` types, and the nullable
+ * arguments of `LedgerDatabase`.
+ */
+export type PostgrestDbClient = PostgrestClient<LedgerDatabase>;
 
 /**
  * Makes a PostgREST client that signs a new JWT for each request, with the
@@ -22,7 +25,7 @@ export const createPostgrestClient = ({
   jwtSecret: string;
   userId: string;
 }): PostgrestDbClient =>
-  new PostgrestClient<Database>(restUrl, {
+  new PostgrestClient<LedgerDatabase>(restUrl, {
     fetch: async (input, init) => {
       const headers = new Headers(init?.headers);
       headers.set(
