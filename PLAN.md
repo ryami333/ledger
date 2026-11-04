@@ -543,13 +543,34 @@ Notes:
 
 ### Phase 2: Sign-in and app shell
 
-- [ ] TanStack Start app with Mantine, CSS Modules, React Compiler, `env.ts`.
-- [ ] better-auth with Pocket ID, `authMiddleware`, `createUserPostgrestClient`, from
+- [x] TanStack Start app with Mantine, CSS Modules, React Compiler, `env.ts`.
+- [x] better-auth with Pocket ID, `authMiddleware`, `createUserPostgrestClient`, from
       stripclub.
 - [ ] Register `http://127.0.0.1:3001/api/auth/callback/pocket-id` in Pocket ID. Test one
       real sign-in.
-- [ ] `LoginView`, the `AppShell` layout, sign-out.
-- [ ] `Modal`, `Drawer`, and `ConfirmModal` wrappers (Clarity rules).
+- [x] `LoginView`, the `AppShell` layout, sign-out.
+- [x] `Modal`, `Drawer`, and `ConfirmModal` wrappers (Clarity rules).
+
+Notes:
+
+- The Pocket ID step needs Mitch: make the OIDC client in Pocket ID, then put
+  `BETTER_AUTH_SECRET` and the `POCKET_ID_*` values in `.env` (see `.env.example`).
+- `tsconfig.json` now has the settings of `apps/web/tsconfig.json` of stripclub (`bundler`,
+  DOM, JSX, the TanStack Router plugin), for the whole repository. `lint:typescript` stays
+  `tsc6`.
+- `vite.config.ts`, `postcss.config.mjs`, and `public/` are at the repository root.
+  `vite.config.ts` reads `.env` of the repository root.
+- `src/db/createPostgrestClient.ts` signs only the role `authenticated`, because there is
+  no service role. `src/server/createUserPostgrestClient.ts` reads the env and calls it.
+- The server functions are `getCurrentUserServerFn` and `signOutServerFn`.
+- `/` shows a placeholder `SpacesView`. Phase 4 adds the list.
+- The modal wrappers come from Clarity, with the Mantine `CloseButton` and Mantine CSS
+  variables. `src/lib/useEntityModalState.ts`, `src/lib/stringBool.ts`, and
+  `src/styles/tokens/z-index.css` come from Clarity too.
+- Tested by hand with dummy Pocket ID values: `/` opens `/login`. A session row of the
+  seed user, with a cookie signed by the dummy secret, opens the `AppShell` with the name
+  of the user, and "Sign out" deletes the session. The user client reads the seed space
+  through PostgREST.
 
 ### Phase 3: Money logic
 
