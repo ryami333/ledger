@@ -1,0 +1,74 @@
+-- Fixtures. Include this file after helpers.psql. The file runs as postgres,
+-- thus RLS does not stop the inserts. The deferred constraint triggers run at
+-- the end of the test transaction, thus the rows must obey them.
+--
+-- The test files use these IDs as literals:
+--
+--   00000000-0000-0000-0000-00000000000a   user A
+--   00000000-0000-0000-0000-00000000000b   user B
+--   10000000-0000-0000-0000-00000000000a   space A (EUR default, USD 0.92)
+--   10000000-0000-0000-0000-00000000000b   space B (EUR default)
+--   20000000-0000-0000-0000-0000000000a1   member Barack of space A
+--   20000000-0000-0000-0000-0000000000a2   member Michelle of space A
+--   20000000-0000-0000-0000-0000000000a3   member Donald of space A, in no alias
+--                                          and no transaction
+--   20000000-0000-0000-0000-0000000000b1   member Joe of space B
+--   30000000-0000-0000-0000-00000000000a   alias "Obamas' Shared Account" of
+--                                          space A (Barack, Michelle)
+--   30000000-0000-0000-0000-0000000000a2   alias "Unused" of space A (Barack),
+--                                          in no transaction
+--   40000000-0000-0000-0000-00000000000a   transaction of space A in USD:
+--                                          paid_by the alias, paid_to Barack
+--                                          and Michelle
+
+do $$
+begin
+  perform tests.create_user('00000000-0000-0000-0000-00000000000a', 'user-a@test.invalid');
+  perform tests.create_user('00000000-0000-0000-0000-00000000000b', 'user-b@test.invalid');
+
+  insert into public.spaces (id, title, created_by, updated_by)
+  values
+    ('10000000-0000-0000-0000-00000000000a', 'Space A',
+     '00000000-0000-0000-0000-00000000000a', '00000000-0000-0000-0000-00000000000a'),
+    ('10000000-0000-0000-0000-00000000000b', 'Space B',
+     '00000000-0000-0000-0000-00000000000b', '00000000-0000-0000-0000-00000000000b');
+
+  insert into public.space_currencies (space_id, currency, rate, is_default)
+  values
+    ('10000000-0000-0000-0000-00000000000a', 'EUR', 1, true),
+    ('10000000-0000-0000-0000-00000000000a', 'USD', 0.92, false),
+    ('10000000-0000-0000-0000-00000000000b', 'EUR', 1, true);
+
+  insert into public.members (id, space_id, name)
+  values
+    ('20000000-0000-0000-0000-0000000000a1', '10000000-0000-0000-0000-00000000000a', 'Barack'),
+    ('20000000-0000-0000-0000-0000000000a2', '10000000-0000-0000-0000-00000000000a', 'Michelle'),
+    ('20000000-0000-0000-0000-0000000000a3', '10000000-0000-0000-0000-00000000000a', 'Donald'),
+    ('20000000-0000-0000-0000-0000000000b1', '10000000-0000-0000-0000-00000000000b', 'Joe');
+
+  insert into public.aliases (id, space_id, name)
+  values
+    ('30000000-0000-0000-0000-00000000000a', '10000000-0000-0000-0000-00000000000a', 'Obamas'' Shared Account'),
+    ('30000000-0000-0000-0000-0000000000a2', '10000000-0000-0000-0000-00000000000a', 'Unused');
+
+  insert into public.alias_members (alias_id, member_id, space_id)
+  values
+    ('30000000-0000-0000-0000-00000000000a', '20000000-0000-0000-0000-0000000000a1', '10000000-0000-0000-0000-00000000000a'),
+    ('30000000-0000-0000-0000-00000000000a', '20000000-0000-0000-0000-0000000000a2', '10000000-0000-0000-0000-00000000000a'),
+    ('30000000-0000-0000-0000-0000000000a2', '20000000-0000-0000-0000-0000000000a1', '10000000-0000-0000-0000-00000000000a');
+
+  insert into public.transactions (id, space_id, title, amount_minor, currency, transaction_date)
+  values
+    ('40000000-0000-0000-0000-00000000000a', '10000000-0000-0000-0000-00000000000a',
+     'Dinner', 4000, 'USD', '2026-11-01');
+
+  insert into public.transaction_parties (transaction_id, space_id, side, member_id, alias_id)
+  values
+    ('40000000-0000-0000-0000-00000000000a', '10000000-0000-0000-0000-00000000000a', 'paid_by',
+     null, '30000000-0000-0000-0000-00000000000a'),
+    ('40000000-0000-0000-0000-00000000000a', '10000000-0000-0000-0000-00000000000a', 'paid_to',
+     '20000000-0000-0000-0000-0000000000a1', null),
+    ('40000000-0000-0000-0000-00000000000a', '10000000-0000-0000-0000-00000000000a', 'paid_to',
+     '20000000-0000-0000-0000-0000000000a2', null);
+end;
+$$;

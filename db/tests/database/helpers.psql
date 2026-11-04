@@ -1,0 +1,80 @@
+-- Test helpers. The .psql extension stops `yarn db:test` from running this
+-- file as a test.
+--
+-- The helpers set request.jwt.claims directly, and current_user_id() reads
+-- it. Thus the database applies the same policies as for a signed JWT, but
+-- the tests do not go through PostgREST or better-auth.
+
+create schema tests;
+
+grant usage on schema tests to anon, authenticated;
+
+-- Creates a user in better_auth.users.
+create function tests.create_user(new_user_id uuid, new_email text)
+returns void
+language plpgsql
+as $$
+begin
+  insert into better_auth.users (id, name, email)
+  values (new_user_id, new_email, new_email);
+end;
+$$;
+
+-- Makes the next statements run as the given user, with the role
+-- "authenticated". The change stays until the end of the transaction, or until
+-- tests.clear_authentication.
+create function tests.authenticate_as(target_user_id uuid)
+returns void
+language plpgsql
+as $$
+begin
+  perform set_config(
+    'request.jwt.claims',
+    json_build_object('sub', target_user_id, 'role', 'authenticated')::text,
+    true
+  );
+  set local role authenticated;
+end;
+$$;
+
+-- Makes the next statements run with the role "anon", as PostgREST does for
+-- a request with no session.
+create function tests.authenticate_as_anon()
+returns void
+language plpgsql
+as $$
+begin
+  perform set_config(
+    'request.jwt.claims',
+    json_build_object('role', 'anon')::text,
+    true
+  );
+  set local role anon;
+end;
+$$;
+
+-- Makes the next statements run as the role of the session again, with no
+-- claims.
+create function tests.clear_authentication()
+returns void
+language plpgsql
+as $$
+begin
+  perform set_config('request.jwt.claims', '', true);
+  reset role;
+end;
+$$;
+
+-- Runs a statement, then runs the deferred constraint triggers at once. A
+-- test transaction never commits, thus without this helper the deferred
+-- triggers (600_triggers.sql) never run. Use it in lives_ok and throws_ok.
+create function tests.run_with_deferred_checks(statement text)
+returns void
+language plpgsql
+as $$
+begin
+  execute statement;
+  set constraints all immediate;
+  set constraints all deferred;
+end;
+$$;

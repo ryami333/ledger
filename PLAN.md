@@ -352,19 +352,28 @@ Foreign keys:
 
 - `space_id` of each child table: `on delete cascade`. A delete of a space deletes all its
   rows.
-- `member_id` and `alias_id` in `transaction_parties` and `alias_members`:
-  `on delete restrict`. Thus a member or an alias in use cannot be deleted (D7, D8).
-- `(space_id, currency)` in `transactions`: `on delete restrict`. Thus a space currency in
+- `member_id` and `alias_id` in `transaction_parties`, and `member_id` in `alias_members`:
+  no `on delete` action. Thus a member or an alias in use cannot be deleted (D7, D8).
+  Postgres checks a key with no action at the end of the statement, not at once as with
+  `restrict`. Thus a delete of a space can remove all its rows with no error.
+- `alias_id` in `alias_members`: `on delete cascade`. A delete of an alias deletes its
+  members.
+- `(space_id, currency)` in `transactions`: no `on delete` action. Thus a space currency in
   use cannot be removed (D5).
 - `transaction_id` in `transaction_parties`: `on delete cascade`.
 - `created_by` and `updated_by`: to `better_auth.users(id)`, `on delete set null`.
 
-Grants for the role `authenticated`:
+Grants for the role `authenticated`: select and delete on each table, and insert and
+update on the columns that a user or a function of D9 writes. The functions of D9 run as the
+caller (`SECURITY INVOKER`), thus the caller needs these grants. No grant gives `id`,
+`space_id` (on update), the timestamps, or the actor columns. See `db/schemas/800_grants.sql`.
 
-- `spaces`: select, delete; update `title`, `description`. Insert through `create_space`.
-- `members`: select, delete; insert `space_id`, `name`; update `name`, `archived_at`.
-- `space_currencies`, `aliases`, `alias_members`, `transactions`, `transaction_parties`:
-  select and delete. Insert and update through the functions of D9.
+Deferred constraint triggers check the rules of the lists at the end of the database
+transaction, also for a direct write through PostgREST:
+
+- Each space has exactly one default currency (D5).
+- Each alias has one or more members (D7).
+- Each side of a transaction has one or more parties.
 
 ## UI
 
@@ -487,15 +496,15 @@ Notes:
 
 ### Phase 1: Database
 
-- [ ] `compose.yaml` (dev): Postgres 17 with pgTAP, PostgREST, and the `types` service, on
+- [x] `compose.yaml` (dev): Postgres 17 with pgTAP, PostgREST, and the `types` service, on
       the ports of D14.
-- [ ] `scripts/diff-database.sh`, `scripts/test-database.sh`, and
+- [x] `scripts/diff-database.sh`, `scripts/test-database.sh`, and
       `src/scripts/migrateDatabase.ts`, from stripclub.
-- [ ] Schema files: roles, `better_auth` tables, the enum `transaction_side`, the tables of
+- [x] Schema files: roles, `better_auth` tables, the enum `transaction_side`, the tables of
       the data model, `app_users`, the trigger functions, the functions of D9, the policies,
       and the grants.
-- [ ] Baseline migration `0001_baseline.sql` with `yarn db:diff baseline`.
-- [ ] pgTAP tests:
+- [x] Baseline migration `0001_baseline.sql`. `yarn db:diff` finds no change after it.
+- [x] pgTAP tests:
   - RLS on for each table, `anon` gets nothing, `authenticated` can do each permitted
     operation.
   - Actor columns, timestamp columns, `SECURITY DEFINER` search paths (only `app_users` runs
@@ -505,10 +514,32 @@ Notes:
   - `save_transaction` refuses an empty side. `save_space_currencies` refuses zero or two
     default currencies, and a default rate that is not `1`.
   - The delete rules of members, aliases, and space currencies.
-- [ ] `yarn generate` writes `src/db/database.types.ts`.
-- [ ] Seed: one user with the email of a Pocket ID account, the space "Washington" with
+- [x] `yarn generate` writes `src/db/database.types.ts`.
+- [x] Seed: one user with the email of a Pocket ID account, the space "Washington" with
       Barack, Michelle, Donald, and Melania, the alias "Obamas' Shared Account", the
       currencies EUR (default) and USD, and some transactions in both currencies.
+
+Notes:
+
+- There is no role `service_role`, because `ledger` has no worker. `000_roles.sql` makes
+  `anon`, `authenticated`, and `authenticator`.
+- `0001_baseline.sql` is the files of `db/schemas` in their order, with a header, as in
+  stripclub. `yarn db:diff` then finds no change. pg-delta prints `dangling_edge` warnings
+  for the constraint triggers: it does not model them fully. Read a diff of a change to
+  these triggers with care.
+- The view `app_users` is in `190_app_users.sql`. No table needs `400_foreign_keys.sql`,
+  thus the file does not exist.
+- The parameters of the functions of D9 have the prefix `p_`, for example `p_space_id`, as
+  in stripclub. PostgREST takes the parameter names as the keys of the RPC body.
+- `transaction_parties` has an `id` primary key, as each table with a single primary key.
+- The grants and the foreign keys differ from the first version of this plan. See "Data
+  model" above.
+- The pgTAP tests are in `db/tests/database/`: `rls_enabled`, `table_access`,
+  `function_grants`, `security_definer_search_path`, `current_user_id`, `actor_columns`,
+  `timestamp_columns`, `space_isolation`, `save_functions`, and `delete_rules`.
+  `tests.run_with_deferred_checks` in `helpers.psql` runs the deferred triggers in a test.
+- The local image `ledger-dev-db` has the same Dockerfile as `stripclub-dev-db`. A local
+  `docker tag stripclub-dev-db ledger-dev-db` skips the slow first build.
 
 ### Phase 2: Sign-in and app shell
 
