@@ -1,0 +1,22 @@
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mantine-spacing-xs);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.balance {
+  &[data-direction="owed"] {
+    color: var(--mantine-color-teal-text);
+  }
+
+  &[data-direction="owes"] {
+    color: var(--mantine-color-red-text);
+  }
+
+  &[data-direction="settled"] {
+    color: var(--mantine-color-dimmed);
+  }
+}
