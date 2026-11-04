@@ -1,4 +1,8 @@
-import { parsePartyValue, toPartyValue } from "./partyValueHelpers.ts";
+import {
+  parsePartyValue,
+  toPartyRow,
+  toPartyValue,
+} from "./partyValueHelpers.ts";
 import { describe, expect, it } from "vitest";
 
 const memberId = "a0000000-0000-4000-8000-000000000001";
@@ -18,5 +22,18 @@ describe("toPartyValue and parsePartyValue", () => {
     for (const value of ["", memberId, "member:1", `group:${memberId}`]) {
       expect(parsePartyValue(value), value).toBeNull();
     }
+  });
+});
+
+describe("toPartyRow", () => {
+  it("gives a party row with one ID and one null", () => {
+    expect(toPartyRow({ member_id: memberId })).toEqual({
+      member_id: memberId,
+      alias_id: null,
+    });
+    expect(toPartyRow({ alias_id: aliasId })).toEqual({
+      member_id: null,
+      alias_id: aliasId,
+    });
   });
 });

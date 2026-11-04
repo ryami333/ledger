@@ -30,3 +30,12 @@ export const parsePartyValue = (value: string): PartyReference | null => {
     ? { member_id: match[2] }
     : { alias_id: match[2] };
 };
+
+/**
+ * Converts a party of the body of `save_transaction` to a party row, as in
+ * `transaction_parties`. The preview line of the form reads party rows.
+ */
+export const toPartyRow = (reference: PartyReference): PartyRow =>
+  "member_id" in reference
+    ? { member_id: reference.member_id, alias_id: null }
+    : { member_id: null, alias_id: reference.alias_id };
