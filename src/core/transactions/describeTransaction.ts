@@ -9,7 +9,7 @@ import { type NamedRow, getPartyName } from "./getPartyName.ts";
  * Writes the short line of a transaction in the transaction list, for example
  * "Obamas' Shared Account paid for everyone" (PLAN.md, UI).
  *
- * The names on each side are in alphabetical order. Paid to is "everyone"
+ * The names on each side are in alphabetical order. Paid for is "everyone"
  * when its members, also through an alias, include each member that is not
  * archived, and the space has two or more of these members.
  */
@@ -35,9 +35,9 @@ export const describeTransaction = ({
         .toSorted((first, second) => first.localeCompare(second, locale)),
     );
 
-  const payeeMemberIds = new Set(
+  const paidForMemberIds = new Set(
     parties
-      .filter((party) => party.side === "paid_to")
+      .filter((party) => party.side === "paid_for")
       .flatMap((party) => {
         if (party.member_id !== null) return [party.member_id];
         return aliasMembers
@@ -48,8 +48,8 @@ export const describeTransaction = ({
   const activeMembers = members.filter((member) => member.archived_at === null);
   const isEveryone =
     activeMembers.length > 1 &&
-    activeMembers.every((member) => payeeMemberIds.has(member.id));
+    activeMembers.every((member) => paidForMemberIds.has(member.id));
 
-  const payees = isEveryone ? "everyone" : describeSide("paid_to");
-  return `${describeSide("paid_by")} paid for ${payees}`;
+  const paidForText = isEveryone ? "everyone" : describeSide("paid_for");
+  return `${describeSide("paid_by")} paid for ${paidForText}`;
 };

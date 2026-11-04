@@ -29,10 +29,10 @@ comments, docs, and chat.
 - **Alias:** One row of `aliases`. A name for a set of members of one space, for example
   "Obamas' Shared Account" for Barack and Michelle.
 - **Transaction:** One row of `transactions`. One payment: a date, an amount in one currency,
-  the payers, and the payees. Write "database transaction" for the SQL meaning.
+  the payers, and the parties that the payment is for. Write "database transaction" for the SQL meaning.
 - **Party:** One row of `transaction_parties`. One member or one alias on one side of a
   transaction.
-- **Side:** `paid_by` (the payers) or `paid_to` (the payees, who got the value).
+- **Side:** `paid_by` (the payers) or `paid_for` (the parties that the payment is for, who got the value).
 - **Space currency:** One row of `space_currencies`. A currency that the transactions of one
   space can use, with its rate.
 - **Default currency:** The one space currency with `is_default`. The transaction form

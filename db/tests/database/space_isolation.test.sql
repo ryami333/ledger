@@ -14,7 +14,7 @@ select tests.authenticate_as('00000000-0000-0000-0000-00000000000a');
 select throws_ok(
   $$ insert into public.transaction_parties (transaction_id, space_id, side, member_id)
      values ('40000000-0000-0000-0000-00000000000a', '10000000-0000-0000-0000-00000000000a',
-             'paid_to', '20000000-0000-0000-0000-0000000000b1') $$,
+             'paid_for', '20000000-0000-0000-0000-0000000000b1') $$,
   '23503',
   null,
   'insert.transaction_parties: a member of a different space is refused'
@@ -23,7 +23,7 @@ select throws_ok(
 select throws_ok(
   $$ insert into public.transaction_parties (transaction_id, space_id, side, member_id)
      values ('40000000-0000-0000-0000-00000000000a', '10000000-0000-0000-0000-00000000000b',
-             'paid_to', '20000000-0000-0000-0000-0000000000b1') $$,
+             'paid_for', '20000000-0000-0000-0000-0000000000b1') $$,
   '23503',
   null,
   'insert.transaction_parties: a party with the space of a different transaction is refused'

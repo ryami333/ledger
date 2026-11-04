@@ -34,10 +34,10 @@ Phase 0 copies this glossary into `AGENTS.md`.
 - **Alias:** One row of `aliases`. A name for a set of members of one space, for example
   "Obamas' Shared Account" for Barack and Michelle.
 - **Transaction:** One row of `transactions`. One payment: a date, an amount in one currency,
-  the payers, and the payees. Write "database transaction" for the SQL meaning.
+  the payers, and the parties that the payment is for. Write "database transaction" for the SQL meaning.
 - **Party:** One row of `transaction_parties`. One member or one alias on one side of a
   transaction.
-- **Side:** `paid_by` (the payers) or `paid_to` (the payees, who got the value).
+- **Side:** `paid_by` (the payers) or `paid_for` (the parties that the payment is for, who got the value).
 - **Space currency:** One row of `space_currencies`. A currency that the transactions of one
   space can use, with its rate.
 - **Default currency:** The one space currency with `is_default`. The transaction form
@@ -197,7 +197,7 @@ one party, not its members:
 
 Thus each side sums to the converted amount exactly, and the balances of a space sum to zero.
 
-Example: `paid_by: [Obamas' Shared Account, Donald]`, `paid_to: everyone`, €100.00. The alias
+Example: `paid_by: [Obamas' Shared Account, Donald]`, `paid_for: everyone`, €100.00. The alias
 paid €50.00: Barack €25.00 and Michelle €25.00. Donald paid €50.00. Each of the four members
 got €25.00. Barack and Michelle have €0.00, Donald has +€25.00, and Melania has −€25.00.
 
@@ -207,7 +207,7 @@ input.
 
 A member can be on both sides. This is normal: Barack pays dinner for all four.
 
-The "Everyone" button of Paid to adds each member that is not archived, as member parties.
+The "Everyone" button of Paid for adds each member that is not archived, as member parties.
 
 Custom shares (weights, percentages, exact amounts) go to the roadmap.
 
@@ -242,8 +242,8 @@ apply as for a direct write.
 - `save_alias(alias_id, space_id, name, member_ids)` inserts or updates the alias, and
   replaces its members.
 - `save_transaction(transaction_id, space_id, title, description, amount_minor, currency,
-transaction_date, paid_by, paid_to)` inserts or updates the transaction, and replaces its
-  parties. `paid_by` and `paid_to` are `jsonb` arrays of `{ "member_id": ... }` or
+transaction_date, paid_by, paid_for)` inserts or updates the transaction, and replaces its
+  parties. `paid_by` and `paid_for` are `jsonb` arrays of `{ "member_id": ... }` or
   `{ "alias_id": ... }`. It refuses an empty side, a party of a different space, a currency
   that is not a space currency, and an archived member in a new transaction.
 
@@ -269,7 +269,7 @@ A delete of a transaction is a hard delete, after a confirmation. The parties go
   - zero: "Michelle is settled up."
 - The space page sorts the balances: the members who are owed first, then the members who
   owe, then the settled members.
-- To settle up, a user records a normal transaction: `paid_by: Donald`, `paid_to: Barack`.
+- To settle up, a user records a normal transaction: `paid_by: Donald`, `paid_for: Barack`.
   The first version has no special payment type and no optimal settle-up path.
 
 ### D11: Dates
@@ -342,7 +342,7 @@ member_id)`. Foreign keys `(space_id, alias_id)` to `aliases` and `(space_id, me
   `created_by`, `updated_by`. Unique `(space_id, id)`. Foreign key `(space_id, currency)` to
   `space_currencies`. Index `(space_id, transaction_date desc, created_at desc)`.
 - **`transaction_parties`**: `transaction_id`, `space_id`, `side` (enum `transaction_side`:
-  `paid_by`, `paid_to`), `member_id` (nullable), `alias_id` (nullable). A check allows
+  `paid_by`, `paid_for`), `member_id` (nullable), `alias_id` (nullable). A check allows
   exactly one of `member_id` and `alias_id`. Unique `(transaction_id, side, member_id)` and
   `(transaction_id, side, alias_id)`. Composite foreign keys to `transactions`, `members`, and
   `aliases` keep the party in the space of its transaction.
@@ -394,7 +394,7 @@ All pages use Mantine, inside one `AppShell` with the product name and a sign-ou
 - **Transaction drawer**: one form for a new and an existing transaction:
   - Title, Description, Amount (`NumberInput`, with the decimals of the currency), Currency
     (`Select` of the space currencies, the default currency first), Date (`DateInput`).
-  - Paid by, Paid to: one `MultiSelect` each, with the groups "Members" and "Aliases". Paid
+  - Paid by, Paid for: one `MultiSelect` each, with the groups "Members" and "Aliases". Paid
     to has an "Everyone" button (D6).
   - A preview line under the form, from `src/core`: "Obamas' Shared Account and Donald
     each paid €50.00. Each of 4 members got €25.00."
@@ -619,7 +619,7 @@ Notes:
   when the rows do not agree, for example a transaction in a currency that is not a space
   currency.
 - `describeTransaction` writes the list line, for example "Obamas' Shared Account paid for
-  everyone". Paid to is "everyone" when its members, also through an alias, include each
+  everyone". Paid for is "everyone" when its members, also through an alias, include each
   member that is not archived. The names are in alphabetical order.
 - `describeTransactionPreview` writes the preview line. It splits the amount in the
   currency of the transaction, among the parties of each side, and keeps the order of the
@@ -706,7 +706,7 @@ Notes:
   `transaction-delete`). Escape closes only the confirmation. A close of the drawer, for
   example with the back button, also closes the confirmation.
 - The party picker has the groups "Members" and "Aliases". An archived member is an option
-  only when the transaction already has the member (D8). "Everyone" replaces Paid to with
+  only when the transaction already has the member (D8). "Everyone" replaces Paid for with
   each member that is not archived (D6).
 - The preview line splits the amount in the currency of the transaction, not in the default
   currency (`describeTransactionPreview`). `toPartyRow` in `partyValueHelpers.ts` converts a
@@ -764,5 +764,9 @@ Notes:
 - **Name and host:** `ledger` and `ledger.mitchryan.org` (D12).
 - **Server function names:** The folder `serverFunctions/` and the suffix `ServerFn`
   ("Conventions from Clarity").
+- **Name of the second side:** `paid_for`, not `paid_to`. The UI label is "Paid for".
+  `0002_rename_paid_to_to_paid_for.sql` renames the enum value and the parameter of
+  `save_transaction`. Before 1.0, a migration can break old data, because no production
+  database exists.
 - **A member on a side two times:** Allowed. `paid_by: [Obamas' Shared Account, Barack]`
   gives Barack 75 % and Michelle 25 % (D6, rule 3).

@@ -24,19 +24,19 @@ const preview = ({
   amountMinor,
   currency = "EUR",
   paidBy,
-  paidTo,
+  paidFor,
 }: {
   amountMinor: bigint;
   currency?: string;
   paidBy: PartyRow[];
-  paidTo: PartyRow[];
+  paidFor: PartyRow[];
 }) =>
   describeTransactionPreview({
     amountMinor,
     currency,
     locale: "en-IE",
     paidBy,
-    paidTo,
+    paidFor,
     members,
     aliases,
   });
@@ -47,7 +47,7 @@ describe("describeTransactionPreview", () => {
       preview({
         amountMinor: 10000n,
         paidBy: [alias("obamas"), member("donald")],
-        paidTo: everyone,
+        paidFor: everyone,
       }),
     ).toBe(
       "Obamas' Shared Account and Donald each paid €50.00. Each of 4 members got €25.00.",
@@ -60,7 +60,7 @@ describe("describeTransactionPreview", () => {
         amountMinor: 4000n,
         currency: "USD",
         paidBy: [member("barack")],
-        paidTo: [alias("obamas")],
+        paidFor: [alias("obamas")],
       }),
     ).toBe("Barack paid US$40.00. Obamas' Shared Account got US$40.00.");
   });
@@ -70,7 +70,7 @@ describe("describeTransactionPreview", () => {
       preview({
         amountMinor: 900n,
         paidBy: [member("donald")],
-        paidTo: [member("donald"), member("melania"), member("barack")],
+        paidFor: [member("donald"), member("melania"), member("barack")],
       }),
     ).toBe("Donald paid €9.00. Donald, Melania and Barack each got €3.00.");
   });
@@ -80,7 +80,7 @@ describe("describeTransactionPreview", () => {
       preview({
         amountMinor: 10000n,
         paidBy: [member("donald")],
-        paidTo: [member("donald"), member("melania"), member("barack")],
+        paidFor: [member("donald"), member("melania"), member("barack")],
       }),
     ).toBe(
       "Donald paid €100.00. Donald, Melania and Barack each got €33.33 or €33.34.",
@@ -89,7 +89,7 @@ describe("describeTransactionPreview", () => {
 
   it("omits a side with no party", () => {
     expect(
-      preview({ amountMinor: 1000n, paidBy: [member("donald")], paidTo: [] }),
+      preview({ amountMinor: 1000n, paidBy: [member("donald")], paidFor: [] }),
     ).toBe("Donald paid €10.00.");
   });
 
@@ -98,9 +98,9 @@ describe("describeTransactionPreview", () => {
       preview({
         amountMinor: 0n,
         paidBy: [member("donald")],
-        paidTo: everyone,
+        paidFor: everyone,
       }),
     ).toBeNull();
-    expect(preview({ amountMinor: 1000n, paidBy: [], paidTo: [] })).toBeNull();
+    expect(preview({ amountMinor: 1000n, paidBy: [], paidFor: [] })).toBeNull();
   });
 });

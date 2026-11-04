@@ -152,7 +152,7 @@ export const calculateBalances = ({
       defaultCurrency,
     });
     const transactionParties = partiesByTransaction.get(transaction.id) ?? [];
-    for (const side of ["paid_by", "paid_to"] as const) {
+    for (const side of ["paid_by", "paid_for"] as const) {
       const shares = splitSide({
         amountMinor: convertedAmount,
         parties: transactionParties.filter((party) => party.side === side),

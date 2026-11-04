@@ -14,12 +14,12 @@ const aliasMembers = [
   { alias_id: "obamas", member_id: "michelle" },
 ];
 
-const member = (side: "paid_by" | "paid_to", memberId: string) => ({
+const member = (side: "paid_by" | "paid_for", memberId: string) => ({
   side,
   member_id: memberId,
   alias_id: null,
 });
-const alias = (side: "paid_by" | "paid_to", aliasId: string) => ({
+const alias = (side: "paid_by" | "paid_for", aliasId: string) => ({
   side,
   member_id: null,
   alias_id: aliasId,
@@ -37,14 +37,14 @@ const describeParties = (
   });
 
 describe("describeTransaction", () => {
-  it("writes 'everyone' when paid to has each member that is not archived", () => {
+  it("writes 'everyone' when paid for has each member that is not archived", () => {
     expect(
       describeParties([
         alias("paid_by", "obamas"),
-        member("paid_to", "barack"),
-        member("paid_to", "michelle"),
-        member("paid_to", "donald"),
-        member("paid_to", "melania"),
+        member("paid_for", "barack"),
+        member("paid_for", "michelle"),
+        member("paid_for", "donald"),
+        member("paid_for", "melania"),
       ]),
     ).toBe("Obamas' Shared Account paid for everyone");
   });
@@ -53,9 +53,9 @@ describe("describeTransaction", () => {
     expect(
       describeParties([
         member("paid_by", "donald"),
-        alias("paid_to", "obamas"),
-        member("paid_to", "donald"),
-        member("paid_to", "melania"),
+        alias("paid_for", "obamas"),
+        member("paid_for", "donald"),
+        member("paid_for", "melania"),
       ]),
     ).toBe("Donald paid for everyone");
   });
@@ -65,33 +65,33 @@ describe("describeTransaction", () => {
       describeParties([
         member("paid_by", "michelle"),
         member("paid_by", "barack"),
-        member("paid_to", "melania"),
-        alias("paid_to", "obamas"),
-        member("paid_to", "donald"),
+        member("paid_for", "melania"),
+        alias("paid_for", "obamas"),
+        member("paid_for", "donald"),
       ]),
     ).toBe("Barack and Michelle paid for everyone");
     expect(
       describeParties([
         member("paid_by", "donald"),
-        member("paid_to", "melania"),
-        alias("paid_to", "obamas"),
+        member("paid_for", "melania"),
+        alias("paid_for", "obamas"),
       ]),
     ).toBe("Donald paid for Melania and Obamas' Shared Account");
     expect(
       describeParties([
         member("paid_by", "donald"),
-        member("paid_to", "melania"),
-        member("paid_to", "michelle"),
-        member("paid_to", "barack"),
+        member("paid_for", "melania"),
+        member("paid_for", "michelle"),
+        member("paid_for", "barack"),
       ]),
     ).toBe("Donald paid for Barack, Melania and Michelle");
   });
 
-  it("writes the name of a payee who is one person", () => {
+  it("writes the name of a paid-for member who is one person", () => {
     expect(
       describeParties([
         member("paid_by", "donald"),
-        member("paid_to", "barack"),
+        member("paid_for", "barack"),
       ]),
     ).toBe("Donald paid for Barack");
   });

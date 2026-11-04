@@ -80,7 +80,7 @@ export function TransactionForm({
   transaction: SpaceTransaction | null;
 }) {
   const router = useRouter();
-  const partyValuesOfSide = (side: "paid_by" | "paid_to") =>
+  const partyValuesOfSide = (side: "paid_by" | "paid_for") =>
     (transaction?.parties ?? [])
       .filter((party) => party.side === side)
       .map(toPartyValue);
@@ -98,13 +98,13 @@ export function TransactionForm({
       currency: transaction?.currency ?? spaceCurrencies[0]?.currency ?? "",
       transaction_date: transaction?.transaction_date ?? defaultTransactionDate,
       paid_by: partyValuesOfSide("paid_by"),
-      paid_to: partyValuesOfSide("paid_to"),
+      paid_for: partyValuesOfSide("paid_for"),
     },
   });
   const { errors, isSubmitting, isSubmitted } = form.formState;
-  const [amount, currency, paidBy, paidTo] = useWatch({
+  const [amount, currency, paidBy, paidFor] = useWatch({
     control: form.control,
-    name: ["amount", "currency", "paid_by", "paid_to"],
+    name: ["amount", "currency", "paid_by", "paid_for"],
   });
 
   const transactionMemberIds = new Set(
@@ -144,7 +144,7 @@ export function TransactionForm({
       currency,
       locale,
       paidBy: toPartyRows(paidBy),
-      paidTo: toPartyRows(paidTo),
+      paidFor: toPartyRows(paidFor),
       members,
       aliases,
     });
@@ -152,7 +152,7 @@ export function TransactionForm({
 
   const selectEveryone = () =>
     form.setValue(
-      "paid_to",
+      "paid_for",
       activeMembers.map((member) =>
         toPartyValue({ member_id: member.id, alias_id: null }),
       ),
@@ -291,10 +291,10 @@ export function TransactionForm({
           <Stack gap={4}>
             <Controller
               control={form.control}
-              name="paid_to"
+              name="paid_for"
               render={({ field }) => (
                 <MultiSelect
-                  label="Paid to"
+                  label="Paid for"
                   required
                   searchable
                   selectFirstOptionOnChange
@@ -302,7 +302,7 @@ export function TransactionForm({
                   value={field.value}
                   onChange={field.onChange}
                   onBlur={field.onBlur}
-                  error={errors.paid_to?.message}
+                  error={errors.paid_for?.message}
                 />
               )}
             />

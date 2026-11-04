@@ -36,7 +36,7 @@ export const saveTransactionServerFn = createServerFn({ method: "POST" })
         p_currency: values.currency,
         p_transaction_date: values.transaction_date.toString(),
         p_paid_by: values.paid_by,
-        p_paid_to: values.paid_to,
+        p_paid_for: values.paid_for,
       },
     );
     if (error || !transactionId) {

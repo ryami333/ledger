@@ -17,7 +17,7 @@ const validInput: z.input<typeof transactionFormSchema> = {
   currency: "EUR",
   transaction_date: "2026-11-04",
   paid_by: [`alias:${obamas}`, `member:${donald}`],
-  paid_to: [`member:${barack}`, `member:${donald}`],
+  paid_for: [`member:${barack}`, `member:${donald}`],
 };
 
 const issuesOf = (input: z.input<typeof transactionFormSchema>) =>
@@ -35,7 +35,7 @@ describe("transactionFormSchema", () => {
       currency: "EUR",
       transaction_date: Temporal.PlainDate.from("2026-11-04"),
       paid_by: [{ alias_id: obamas }, { member_id: donald }],
-      paid_to: [{ member_id: barack }, { member_id: donald }],
+      paid_for: [{ member_id: barack }, { member_id: donald }],
     });
   });
 
@@ -82,12 +82,12 @@ describe("transactionFormSchema", () => {
         ...validInput,
         title: "  ",
         transaction_date: "2026-02-30",
-        paid_to: [],
+        paid_for: [],
       }),
     ).toEqual([
       { path: "title", message: "Enter a title." },
       { path: "transaction_date", message: "Enter a date." },
-      { path: "paid_to", message: "Select one or more payees." },
+      { path: "paid_for", message: "Select who the payment is for." },
     ]);
     expect(issuesOf({ ...validInput, transaction_date: null })).toEqual([
       { path: "transaction_date", message: "Enter a date." },
@@ -99,11 +99,11 @@ describe("transactionFormSchema", () => {
       issuesOf({
         ...validInput,
         paid_by: [`member:${donald}`, `member:${donald}`],
-        paid_to: ["someone"],
+        paid_for: ["someone"],
       }),
     ).toEqual([
       { path: "paid_by", message: "Select each party one time only." },
-      { path: "paid_to", message: "Select a party." },
+      { path: "paid_for", message: "Select a party." },
     ]);
   });
 });

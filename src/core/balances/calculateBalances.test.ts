@@ -37,13 +37,13 @@ const makeTransaction = ({
   amountMinor,
   currency,
   paidBy,
-  paidTo,
+  paidFor,
 }: {
   id: string;
   amountMinor: bigint;
   currency: string;
   paidBy: string[];
-  paidTo: string[];
+  paidFor: string[];
 }): { transaction: BalanceTransactionRow; parties: BalancePartyRow[] } => {
   const toParty =
     (side: BalancePartyRow["side"]) =>
@@ -57,7 +57,7 @@ const makeTransaction = ({
     transaction: { id, amount_minor: amountMinor, currency },
     parties: [
       ...paidBy.map(toParty("paid_by")),
-      ...paidTo.map(toParty("paid_to")),
+      ...paidFor.map(toParty("paid_for")),
     ],
   };
 };
@@ -92,7 +92,7 @@ describe("calculateBalances", () => {
           amountMinor: 10000n,
           currency: "EUR",
           paidBy: [obamas, donald],
-          paidTo: everyone,
+          paidFor: everyone,
         }),
       ],
     });
@@ -113,7 +113,7 @@ describe("calculateBalances", () => {
           amountMinor: 4000n,
           currency: "USD",
           paidBy: [barack],
-          paidTo: [barack, donald],
+          paidFor: [barack, donald],
         }),
       ],
     });
@@ -131,28 +131,28 @@ describe("calculateBalances", () => {
           amountMinor: 10001n,
           currency: "EUR",
           paidBy: [obamas, donald],
-          paidTo: everyone,
+          paidFor: everyone,
         }),
         makeTransaction({
           id: "t2",
           amountMinor: 3333n,
           currency: "USD",
           paidBy: [melania],
-          paidTo: [obamas, donald, melania],
+          paidFor: [obamas, donald, melania],
         }),
         makeTransaction({
           id: "t3",
           amountMinor: 12345n,
           currency: "JPY",
           paidBy: [obamas, barack],
-          paidTo: [michelle, donald, melania],
+          paidFor: [michelle, donald, melania],
         }),
         makeTransaction({
           id: "t4",
           amountMinor: 1n,
           currency: "USD",
           paidBy: [donald],
-          paidTo: everyone,
+          paidFor: everyone,
         }),
       ],
     });
@@ -168,14 +168,14 @@ describe("calculateBalances", () => {
           amountMinor: 3000n,
           currency: "EUR",
           paidBy: [michelle],
-          paidTo: [donald, melania, michelle],
+          paidFor: [donald, melania, michelle],
         }),
         makeTransaction({
           id: "t2",
           amountMinor: 500n,
           currency: "EUR",
           paidBy: [melania],
-          paidTo: [donald],
+          paidFor: [donald],
         }),
       ],
     });
@@ -206,7 +206,7 @@ describe("calculateBalances", () => {
           amountMinor: 1000n,
           currency: "EUR",
           paidBy: ["5-joe"],
-          paidTo: [barack],
+          paidFor: [barack],
         }),
       ],
       spaceMembers: withArchived,
@@ -229,7 +229,7 @@ describe("calculateBalances", () => {
             amountMinor: 100n,
             currency: "GBP",
             paidBy: [barack],
-            paidTo: [donald],
+            paidFor: [donald],
           }),
         ],
       }),
@@ -242,7 +242,7 @@ describe("calculateBalances", () => {
             amountMinor: 100n,
             currency: "EUR",
             paidBy: ["7-unknown"],
-            paidTo: [donald],
+            paidFor: [donald],
           }),
         ],
       }),

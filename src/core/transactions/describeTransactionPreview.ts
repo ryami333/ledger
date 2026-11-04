@@ -65,7 +65,7 @@ export const describeTransactionPreview = ({
   currency,
   locale,
   paidBy,
-  paidTo,
+  paidFor,
   members,
   aliases,
 }: {
@@ -73,16 +73,16 @@ export const describeTransactionPreview = ({
   currency: string;
   locale: string;
   paidBy: readonly PartyRow[];
-  paidTo: readonly PartyRow[];
+  paidFor: readonly PartyRow[];
   members: readonly NamedRow[];
   aliases: readonly NamedRow[];
 }): string | null => {
-  if (amountMinor <= 0n || (paidBy.length === 0 && paidTo.length === 0)) {
+  if (amountMinor <= 0n || (paidBy.length === 0 && paidFor.length === 0)) {
     return null;
   }
   const sentences = [
     { parties: paidBy, verb: "paid" as const },
-    { parties: paidTo, verb: "got" as const },
+    { parties: paidFor, verb: "got" as const },
   ]
     .filter((side) => side.parties.length > 0)
     .map((side) =>

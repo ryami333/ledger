@@ -378,7 +378,7 @@ export type Database = {
           p_currency: string;
           p_description: string;
           p_paid_by: Json;
-          p_paid_to: Json;
+          p_paid_for: Json;
           p_space_id: string;
           p_title: string;
           p_transaction_date: string;
@@ -388,7 +388,7 @@ export type Database = {
       };
     };
     Enums: {
-      transaction_side: "paid_by" | "paid_to";
+      transaction_side: "paid_by" | "paid_for";
     };
     CompositeTypes: {
       [_ in never]: never;
@@ -516,7 +516,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      transaction_side: ["paid_by", "paid_to"],
+      transaction_side: ["paid_by", "paid_for"],
     },
   },
 } as const;

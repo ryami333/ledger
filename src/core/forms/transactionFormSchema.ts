@@ -80,7 +80,7 @@ export const transactionFormSchema = z
         return z.NEVER;
       }),
     paid_by: partiesSchema("Select one or more payers."),
-    paid_to: partiesSchema("Select one or more payees."),
+    paid_for: partiesSchema("Select who the payment is for."),
   })
   .transform((values, context) => {
     const amountMinor = parseAmount({
@@ -115,6 +115,6 @@ export const transactionFormSchema = z
       currency: values.currency,
       transaction_date: values.transaction_date,
       paid_by: values.paid_by,
-      paid_to: values.paid_to,
+      paid_for: values.paid_for,
     };
   });

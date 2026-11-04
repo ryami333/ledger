@@ -1,5 +1,5 @@
-/** The two sides of a transaction: the payers and the payees. */
-export type TransactionSide = "paid_by" | "paid_to";
+/** The two sides of a transaction: the payers and the parties that the payment is for. */
+export type TransactionSide = "paid_by" | "paid_for";
 
 /** One party of a side: a member or an alias, as in `transaction_parties`. */
 export type PartyRow = {

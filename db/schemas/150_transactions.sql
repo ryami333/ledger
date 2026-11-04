@@ -1,5 +1,6 @@
 -- A transaction is one payment: a date, an amount in one currency, the payers,
--- and the payees (PLAN.md, glossary). The parties are in transaction_parties.
+-- and the parties that the payment is for (PLAN.md, glossary). The parties are
+-- in transaction_parties.
 -- Each side has one or more parties. The constraint trigger
 -- transactions_check_sides (600_triggers.sql) makes sure of this.
 --

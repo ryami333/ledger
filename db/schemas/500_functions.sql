@@ -362,13 +362,13 @@ $$;
 
 -- Inserts or updates a transaction, and replaces its parties (PLAN.md, D9).
 -- Give null as p_transaction_id for a new transaction. p_paid_by and
--- p_paid_to are jsonb arrays of { "member_id": ... } or { "alias_id": ... }.
+-- p_paid_for are jsonb arrays of { "member_id": ... } or { "alias_id": ... }.
 -- Returns the ID of the transaction.
 --
 -- It refuses an empty side, and an archived member in a new transaction. The
 -- composite foreign keys refuse a party of a different space and a currency
 -- that is not a space currency.
-CREATE OR REPLACE FUNCTION "public"."save_transaction"("p_transaction_id" "uuid", "p_space_id" "uuid", "p_title" "text", "p_description" "text", "p_amount_minor" bigint, "p_currency" "text", "p_transaction_date" "date", "p_paid_by" "jsonb", "p_paid_to" "jsonb") RETURNS "uuid"
+CREATE OR REPLACE FUNCTION "public"."save_transaction"("p_transaction_id" "uuid", "p_space_id" "uuid", "p_title" "text", "p_description" "text", "p_amount_minor" bigint, "p_currency" "text", "p_transaction_date" "date", "p_paid_by" "jsonb", "p_paid_for" "jsonb") RETURNS "uuid"
     LANGUAGE "plpgsql" SECURITY INVOKER
     SET "search_path" TO ''
     AS $$
@@ -377,8 +377,8 @@ declare
 begin
   if pg_catalog.jsonb_typeof(p_paid_by) is distinct from 'array'
     or pg_catalog.jsonb_array_length(p_paid_by) = 0
-    or pg_catalog.jsonb_typeof(p_paid_to) is distinct from 'array'
-    or pg_catalog.jsonb_array_length(p_paid_to) = 0
+    or pg_catalog.jsonb_typeof(p_paid_for) is distinct from 'array'
+    or pg_catalog.jsonb_array_length(p_paid_for) = 0
   then
     raise exception 'save_transaction needs one or more parties on each side'
       using errcode = '22023';
@@ -386,7 +386,7 @@ begin
 
   if p_transaction_id is null and exists (
     select
-    from pg_catalog.jsonb_array_elements(p_paid_by || p_paid_to) as item
+    from pg_catalog.jsonb_array_elements(p_paid_by || p_paid_for) as item
     join public.members on members.id = (item ->> 'member_id')::uuid
     where members.archived_at is not null
   ) then
@@ -429,8 +429,8 @@ begin
     select 'paid_by'::public.transaction_side as side, item
     from pg_catalog.jsonb_array_elements(p_paid_by) as item
     union all
-    select 'paid_to'::public.transaction_side as side, item
-    from pg_catalog.jsonb_array_elements(p_paid_to) as item
+    select 'paid_for'::public.transaction_side as side, item
+    from pg_catalog.jsonb_array_elements(p_paid_for) as item
   ) as parties;
 
   return v_transaction_id;
