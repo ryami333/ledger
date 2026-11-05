@@ -7,6 +7,22 @@
       "runtimeArgs": ["exec", "--using=24.22.2", "--", "yarn", "dev"],
       "port": 3001,
       "url": "http://127.0.0.1:3001"
+    },
+    {
+      "name": "web-3000",
+      "runtimeExecutable": "fnm",
+      "runtimeArgs": [
+        "exec",
+        "--using=24.22.2",
+        "--",
+        "yarn",
+        "dev",
+        "--port",
+        "3000",
+        "--strictPort"
+      ],
+      "port": 3000,
+      "url": "http://127.0.0.1:3000"
     }
   ]
 }
