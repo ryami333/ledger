@@ -69,7 +69,7 @@ export function SpaceDetailsSection({ space }: { space: SettingsSpace }) {
           />
           <Group justify="flex-end">
             <Button type="submit" loading={isSubmitting} disabled={!isDirty}>
-              Save details
+              Save Details
             </Button>
           </Group>
         </Stack>

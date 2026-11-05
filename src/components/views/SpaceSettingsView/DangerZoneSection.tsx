@@ -18,7 +18,7 @@ export function DangerZoneSection({ space }: { space: SettingsSpace }) {
           variant="outline"
           onClick={() => setIsDeleteOpen(true)}
         >
-          Delete space
+          Delete Space
         </Button>
       </Group>
       <DeleteSpaceModal

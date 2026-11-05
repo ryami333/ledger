@@ -195,7 +195,7 @@ export function MembersSection({
             {...addForm.register("name")}
           />
           <Button type="submit" loading={addForm.formState.isSubmitting}>
-            Add member
+            Add Member
           </Button>
         </Group>
       </form>
@@ -221,7 +221,7 @@ export function MembersSection({
               )}
             </>
           }
-          confirmLabel="Delete member"
+          confirmLabel="Delete Member"
           cancelLabel="Cancel"
           closeLabel="Close"
           onConfirm={confirmDelete}

@@ -71,7 +71,7 @@ export function TransactionFilters({
         rightSection={
           inputText === "" ? null : (
             <CloseButton
-              aria-label="Clear search"
+              aria-label="Clear Search"
               size="sm"
               onClick={clearSearch}
             />

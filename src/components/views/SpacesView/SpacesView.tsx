@@ -31,7 +31,7 @@ export function SpacesView({
     <Stack gap="md">
       <Group justify="space-between">
         <Title order={1}>Spaces</Title>
-        <Button onClick={() => setIsNewSpaceOpen(true)}>New space</Button>
+        <Button onClick={() => setIsNewSpaceOpen(true)}>New Space</Button>
       </Group>
       {spaces.length === 0 ? (
         <Text c="dimmed">

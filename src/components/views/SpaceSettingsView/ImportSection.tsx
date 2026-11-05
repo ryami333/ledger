@@ -36,7 +36,7 @@ const VISIBLE_PROBLEM_COUNT = 20;
 
 /**
  * The CSV import of a Splid export. The user selects the file, then the
- * member of each name in the file. "Check the import" shows what the import
+ * member of each name in the file. "Check the Import" shows what the import
  * does, with no write. Then "Import" adds the transactions, and the new
  * currencies with a rate from the export.
  */
@@ -165,7 +165,7 @@ export function ImportSection({
                 <Link {...props} to="/spaces/$spaceId" params={{ spaceId }} />
               )}
             >
-              Show the transactions
+              Show the Transactions
             </Anchor>
           </Alert>
         )}
@@ -226,7 +226,7 @@ export function ImportSection({
                     variant="default"
                     loading={isSubmitting}
                   >
-                    Check the import
+                    Check the Import
                   </Button>
                 </Group>
               ) : (
@@ -247,7 +247,7 @@ export function ImportSection({
   );
 }
 
-/** The result of "Check the import", and the button that imports. */
+/** The result of "Check the Import", and the button that imports. */
 function ImportSummaryPanel({
   summary,
   formatCount,
@@ -305,7 +305,7 @@ function ImportSummaryPanel({
           loading={isSubmitting}
           disabled={summary.transactionCount === 0}
         >
-          Import {formatCount(summary.transactionCount)} transactions
+          Import {formatCount(summary.transactionCount)} Transactions
         </Button>
       </Group>
     </Stack>

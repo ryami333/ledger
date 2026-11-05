@@ -85,7 +85,7 @@ export function DeleteSpaceModal({
           loading={isPending}
           disabled={!isTitleCorrect || isPending}
         >
-          Delete space
+          Delete Space
         </Button>
       </Modal.Footer>
     </Modal.Container>

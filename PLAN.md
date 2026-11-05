@@ -219,7 +219,7 @@ A side can have a custom split in place of the equal split:
 - Rule 1 then gives each party a part of the converted amount in proportion to its share.
   The minor units that are left go to the largest rests of the division, then by `id`.
   Equal weights give the result of rule 4. An alias party splits its part equally (rule 2).
-- The "Advanced split" button of a side opens a modal on top of the drawer
+- The "Advanced Split" button of a side opens a modal on top of the drawer
   (`CustomSplitModal`, `Modal.Stack`). It has an input for each party except the last, in
   percent or in the transaction currency, with a toggle. The last party gets the remainder.
 - A percent share rounds half away from zero to a whole minor unit
@@ -400,12 +400,12 @@ transaction, also for a direct write through PostgREST:
 
 All pages use Mantine, inside one `AppShell` with the product name and a sign-out menu.
 
-- **`/login`**: one button, "Sign in with Pocket ID".
+- **`/login`**: one button, "Sign In with Pocket ID".
 - **`/`** (`SpacesView`): the spaces as cards (title, description, member count, date of the
-  last transaction). A "New space" button opens a modal: title, description, default
+  last transaction). A "New Space" button opens a modal: title, description, default
   currency, and the first member names.
 - **`/spaces/$spaceId`** (`SpaceView`):
-  - Header: title, description, an "Edit space" menu, and the "Add transaction" button.
+  - Header: title, description, a "Space Settings" button, and the "Add Transaction" button.
   - Balances panel: one line for each member, in the default currency (D10).
   - Transaction list: date, title, amount, and a short line, for example "Obamas' Shared
     Account paid for everyone". An amount in a different currency also shows the converted
@@ -425,7 +425,7 @@ All pages use Mantine, inside one `AppShell` with the product name and a sign-ou
   - Title, Amount (`NumberInput`, with the decimals of the currency), Currency
     (`Select` of the space currencies, the default currency first), Date (`DateInput`).
   - Paid by, Paid for: one `MultiSelect` each, with the groups "Members" and "Aliases", and
-    an "Advanced split" button each for a custom split (D6). Paid
+    an "Advanced Split" button each for a custom split (D6). Paid
     to has an "Everyone" button (D6).
   - A preview line under the form, from `src/core`: "Obamas' Shared Account and Donald
     each paid €50.00. Each of 4 members got €25.00."
@@ -439,7 +439,7 @@ All pages use Mantine, inside one `AppShell` with the product name and a sign-ou
   - Currencies: add, remove, set the rate ("1 USD = 0.92 EUR"), select the default currency
     (D5).
   - Import: a Splid export ("Summary" as CSV). The user selects the file and the member of
-    each name in the file. "Check the import" shows the plan with no write: the number of
+    each name in the file. "Check the Import" shows the plan with no write: the number of
     transactions, the duplicates (same date, title, amount, and currency), the new currencies,
     and the rows that the import skips. Then "Import" calls `import_transactions`.
     `planSplidImport` in `src/core` makes the plan. Unequal parts give custom shares (D6). The

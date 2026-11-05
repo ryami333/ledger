@@ -124,7 +124,7 @@ export function AliasesSection({
           disabled={members.length === 0}
           onClick={() => aliasModalState.open({ selectedEntity: null })}
         >
-          Add alias
+          Add Alias
         </Button>
       </Group>
       <AliasModal
@@ -150,7 +150,7 @@ export function AliasesSection({
             )}
           </>
         }
-        confirmLabel="Delete alias"
+        confirmLabel="Delete Alias"
         cancelLabel="Cancel"
         closeLabel="Close"
         onConfirm={confirmDelete}

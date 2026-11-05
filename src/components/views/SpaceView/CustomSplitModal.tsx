@@ -234,12 +234,12 @@ function CustomSplitForm({
       </Modal.Inner>
       <Modal.Footer>
         <Button variant="subtle" me="auto" onClick={() => onApply(null)}>
-          Split equally
+          Split Equally
         </Button>
         <Button variant="default" onClick={onRequestClose}>
           Cancel
         </Button>
-        <Button type="submit">Apply split</Button>
+        <Button type="submit">Apply Split</Button>
       </Modal.Footer>
     </form>
   );

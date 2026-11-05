@@ -292,7 +292,7 @@ export function TransactionForm({
         disabled={amountMinor === null || sides[side].values.length < 2}
         onClick={() => openSplitModal(side)}
       >
-        Advanced split
+        Advanced Split
       </Button>
     );
   };
@@ -516,7 +516,7 @@ export function TransactionForm({
           Cancel
         </Button>
         <Button type="submit" loading={isSubmitting}>
-          Save transaction
+          Save Transaction
         </Button>
       </Drawer.Footer>
       {amountMinor !== null && (

@@ -23,7 +23,7 @@ export function LoginView({ next, error }: { next?: string; error?: string }) {
             </Alert>
           ) : null}
           <Button component="a" href={signInHref} size="md" fullWidth>
-            Sign in with Pocket ID
+            Sign In with Pocket ID
           </Button>
         </Stack>
       </Paper>

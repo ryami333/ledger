@@ -224,7 +224,7 @@ export function CurrenciesSection({
           </Group>
           <Group justify="flex-end">
             <Button type="submit" loading={isSubmitting} disabled={!isDirty}>
-              Save currencies
+              Save Currencies
             </Button>
           </Group>
         </Stack>

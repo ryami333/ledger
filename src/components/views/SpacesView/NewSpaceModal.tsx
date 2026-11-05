@@ -147,7 +147,7 @@ export function NewSpaceModal({
             Cancel
           </Button>
           <Button type="submit" loading={isSubmitting}>
-            Make space
+            Make Space
           </Button>
         </Modal.Footer>
       </form>

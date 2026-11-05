@@ -9,7 +9,7 @@ const cx = classNames.bind(styles);
 
 /**
  * The shell of each signed-in page: a header with the product name and a
- * menu with the name of the user and "Sign out".
+ * menu with the name of the user and "Sign Out".
  */
 export function AppLayout({
   userName,
@@ -46,7 +46,7 @@ export function AppLayout({
                   {userEmail}
                 </Text>
               </Menu.Label>
-              <Menu.Item onClick={handleSignOut}>Sign out</Menu.Item>
+              <Menu.Item onClick={handleSignOut}>Sign Out</Menu.Item>
             </Menu.Dropdown>
           </Menu>
         </Group>

@@ -125,7 +125,7 @@ export function AliasModal({
             Cancel
           </Button>
           <Button type="submit" loading={isSubmitting}>
-            Save alias
+            Save Alias
           </Button>
         </Modal.Footer>
       </form>

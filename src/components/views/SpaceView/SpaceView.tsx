@@ -13,7 +13,7 @@ import type {
 } from "./SpaceView.types.ts";
 import { TransactionDrawer } from "./TransactionDrawer.tsx";
 import { TransactionList } from "./TransactionList.tsx";
-import { Button, Group, Menu, Stack, Text, Title } from "@mantine/core";
+import { Button, Group, Stack, Text, Title } from "@mantine/core";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { Temporal } from "temporal-polyfill";
@@ -159,29 +159,23 @@ export function SpaceView({
           {space.description && <Text c="dimmed">{space.description}</Text>}
         </Stack>
         <Group gap="xs">
-          <Menu position="bottom-end">
-            <Menu.Target>
-              <Button variant="default">Edit space</Button>
-            </Menu.Target>
-            <Menu.Dropdown>
-              <Menu.Item
-                renderRoot={(props) => (
-                  <Link
-                    {...props}
-                    to="/spaces/$spaceId/settings"
-                    params={{ spaceId: space.id }}
-                  />
-                )}
-              >
-                Details, members, aliases, and currencies
-              </Menu.Item>
-            </Menu.Dropdown>
-          </Menu>
+          <Button
+            variant="default"
+            renderRoot={(props) => (
+              <Link
+                {...props}
+                to="/spaces/$spaceId/settings"
+                params={{ spaceId: space.id }}
+              />
+            )}
+          >
+            Space Settings
+          </Button>
           <Button
             disabled={members.length === 0}
             onClick={() => setOpenTransaction("new")}
           >
-            Add transaction
+            Add Transaction
           </Button>
         </Group>
       </Group>

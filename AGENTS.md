@@ -613,6 +613,22 @@ Read and write user data in a server function with the user client (`context.db`
 Use React Hook Form with a Zod schema from `src/core`. Type `defaultValues` with
 `z.input` and `onSubmit` with `z.output`. `onSubmit` returns `Promise<void>`.
 
+### Write action labels in Title Case
+
+An action label is the text of a control that does an action. Examples: a button, a menu
+item, a link that does an action, the `confirmLabel` of a `ConfirmModal`, and the
+`aria-label` of an icon button. Write each action label in Title Case.
+
+- Start each word with a capital letter. Examples: "Add Transaction", "Space Settings".
+- Keep articles, conjunctions, and short prepositions lowercase, for example "the", "and",
+  "with". Use a capital letter for the first word and the last word.
+- Use a capital letter for the particle of a phrasal verb: "Sign In", "Sign Out".
+- Keep the product name `ledger` and each proper noun in their usual form. Example:
+  "Sign In with Pocket ID".
+
+This rule is only for action labels. Write headings, modal titles, field labels, and other
+text in sentence case.
+
 ### Modals
 
 - Use the thin wrappers around Mantine in `src/components/ui/`: `Modal` for each

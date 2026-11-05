@@ -116,7 +116,7 @@ export function TransactionDrawer({
             )}
           </>
         }
-        confirmLabel="Delete transaction"
+        confirmLabel="Delete Transaction"
         cancelLabel="Cancel"
         closeLabel="Close"
         onConfirm={confirmDelete}
