@@ -19,7 +19,11 @@ const spaceSearchSchema = z.object({
     .union([z.literal("new"), z.guid()])
     .optional()
     .catch(undefined),
-  query: z.string().optional().catch(undefined),
+  // The router reads a value such as `?query=184` as a number.
+  query: z
+    .union([z.string(), z.number().transform(String)])
+    .optional()
+    .catch(undefined),
   from: z.iso.date().optional().catch(undefined),
   to: z.iso.date().optional().catch(undefined),
   page: z.number().int().min(1).optional().catch(undefined),

@@ -1,5 +1,5 @@
 import { getCurrencyDecimals } from "../money/getCurrencyDecimals.ts";
-import { parseDecimalText } from "../money/parseDecimalText.ts";
+import { minorToDecimalText } from "../money/minorToDecimalText.ts";
 import { parseAmountSearchText } from "./parseAmountSearchText.ts";
 import { Temporal } from "temporal-polyfill";
 
@@ -15,13 +15,44 @@ export type FilterableTransaction = {
 };
 
 /**
+ * Gives `true` when an amount starts with a searched decimal text. The whole
+ * part must be equal, and the searched decimals must be the first decimals of
+ * the amount. Example: "184" and "184.5" find 184.50, but "18" and "84.5" do
+ * not. Zeros after the decimals of the currency are correct: "44.760" finds
+ * 44.76.
+ */
+const isAmountPrefix = ({
+  amountText,
+  amountMinor,
+  decimals,
+}: {
+  /** A decimal text with a point, from `parseAmountSearchText`. */
+  amountText: string;
+  amountMinor: bigint;
+  decimals: number;
+}): boolean => {
+  const [searchedWholeText = "", searchedFraction = ""] = amountText.split(".");
+  const [wholeText = "", fraction = ""] = minorToDecimalText({
+    amountMinor,
+    decimals,
+  }).split(".");
+  const searchedWhole = BigInt(
+    searchedWholeText === "" ? "0" : searchedWholeText,
+  );
+  if (searchedWhole !== BigInt(wholeText)) return false;
+  if (/[^0]/.test(searchedFraction.slice(decimals))) return false;
+  return fraction.startsWith(searchedFraction.slice(0, decimals));
+};
+
+/**
  * Gives the transactions that match the filters of the transaction list, in
  * the same order.
  *
  * - `searchText` matches a transaction when the title or the description
  *   has the text, with no difference between upper case and lower case. It
- *   also matches a transaction when the amount or the converted amount is
- *   the same amount (see `parseAmountSearchText`).
+ *   also matches a transaction when the amount or the converted amount
+ *   starts with the searched amount: "184" finds 184.50 (see
+ *   `parseAmountSearchText` and `isAmountPrefix`).
  * - `fromDate` and `toDate` include their own day. `null` gives no limit.
  */
 export const filterTransactions = <Transaction extends FilterableTransaction>({
@@ -42,7 +73,7 @@ export const filterTransactions = <Transaction extends FilterableTransaction>({
   const needle = searchText.trim().toLocaleLowerCase(locale);
   const amountTexts = parseAmountSearchText(needle);
 
-  /** Gives `true` when one of the amount texts is this amount. */
+  /** Gives `true` when this amount starts with one of the amount texts. */
   const isSearchedAmount = ({
     amountMinor,
     currency,
@@ -51,9 +82,8 @@ export const filterTransactions = <Transaction extends FilterableTransaction>({
     currency: string;
   }) => {
     const decimals = getCurrencyDecimals(currency);
-    return amountTexts.some(
-      (amountText) =>
-        parseDecimalText({ text: amountText, decimals }) === amountMinor,
+    return amountTexts.some((amountText) =>
+      isAmountPrefix({ amountText, amountMinor, decimals }),
     );
   };
 

@@ -409,7 +409,8 @@ All pages use Mantine, inside one `AppShell` with the product name and a sign-ou
     amount, for example "$40.00 (€36.80)". One click on a row opens the transaction drawer.
   - Above the transaction list: a search input with a clear button, and a date range. The
     search finds a text in the title or the description, with no difference between upper
-    case and lower case. It also finds an amount or a converted amount: "44,76", "44.76",
+    case and lower case. It also finds an amount or a converted amount that starts with the
+    searched amount: "184" and "184,5" find 184.50, but "18" does not. "44,76", "44.76",
     "1.234,56", and "1,234.56" are all correct (`filterTransactions` in `src/core`).
   - The transaction list shows 50 transactions on one page, with a `Pagination` under it.
     The filters and the page apply in the browser, because the loader reads all

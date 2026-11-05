@@ -80,11 +80,23 @@ describe("filterTransactions", () => {
   });
 
   it("finds an amount with an ambiguous separator", () => {
-    expect(filterIds({ searchText: "1,234" })).toEqual(["sushi"]);
+    expect(filterIds({ searchText: "1,234" })).toEqual(["hotel", "sushi"]);
+    expect(filterIds({ searchText: "1,234.5" })).toEqual(["hotel"]);
   });
 
-  it("does not find a part of an amount", () => {
-    expect(filterIds({ searchText: "44" })).toEqual([]);
+  it("finds an amount that starts with the searched amount", () => {
+    expect(filterIds({ searchText: "44" })).toEqual(["dinner"]);
+    expect(filterIds({ searchText: "44." })).toEqual(["dinner"]);
+    expect(filterIds({ searchText: "44,7" })).toEqual(["dinner"]);
+    expect(filterIds({ searchText: "44.760" })).toEqual(["dinner"]);
+    expect(filterIds({ searchText: "1234" })).toEqual(["hotel", "sushi"]);
+  });
+
+  it("does not find a different whole number or other decimals", () => {
+    expect(filterIds({ searchText: "4" })).toEqual([]);
+    expect(filterIds({ searchText: "76" })).toEqual([]);
+    expect(filterIds({ searchText: "44.8" })).toEqual([]);
+    expect(filterIds({ searchText: "44.761" })).toEqual([]);
   });
 
   it("keeps the transactions in the date range, with both days", () => {
