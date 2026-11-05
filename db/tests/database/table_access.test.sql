@@ -9,7 +9,7 @@ begin;
 \ir helpers.psql
 \ir fixtures.psql
 
-select plan(16);
+select plan(20);
 
 -- anon
 
@@ -107,6 +107,35 @@ select isnt_empty(
      where id = '10000000-0000-0000-0000-00000000000a'
      returning id $$,
   'update.spaces: a user renames a space of a different user'
+);
+
+select is(
+  (select slug from public.spaces where id = '10000000-0000-0000-0000-00000000000a'),
+  '10000000-0000-0000-0000-00000000000a',
+  'insert.spaces: a new space gets its ID as slug'
+);
+
+select isnt_empty(
+  $$ update public.spaces set slug = 'space-a'
+     where id = '10000000-0000-0000-0000-00000000000a'
+     returning id $$,
+  'update.spaces: a user changes the slug of a space'
+);
+
+select throws_ok(
+  $$ update public.spaces set slug = 'space-a'
+     where id = '10000000-0000-0000-0000-00000000000b' $$,
+  '23505',
+  null,
+  'update.spaces: two spaces cannot have the same slug'
+);
+
+select throws_ok(
+  $$ update public.spaces set slug = 'Space A'
+     where id = '10000000-0000-0000-0000-00000000000b' $$,
+  '23514',
+  null,
+  'update.spaces: a slug has only small letters, digits, and hyphens'
 );
 
 select throws_ok(

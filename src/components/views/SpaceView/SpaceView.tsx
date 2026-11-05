@@ -22,7 +22,7 @@ import { Temporal } from "temporal-polyfill";
 const TRANSACTIONS_PAGE_SIZE = 50;
 
 /**
- * The page `/spaces/$spaceId` (PLAN.md, UI): the header, the balances panel,
+ * The page `/spaces/$spaceSlug` (PLAN.md, UI): the header, the balances panel,
  * the transaction list, and the transaction drawer.
  *
  * `openTransaction` is the search param `transaction`: the ID of the open
@@ -95,8 +95,8 @@ export function SpaceView({
   // The drawer keeps the filters and the page of the transaction list.
   const setOpenTransaction = (transaction: string | null) =>
     navigate({
-      to: "/spaces/$spaceId",
-      params: { spaceId: space.id },
+      to: "/spaces/$spaceSlug",
+      params: { spaceSlug: space.slug },
       search: (prev) => ({ ...prev, transaction: transaction ?? undefined }),
       resetScroll: false,
     });
@@ -128,8 +128,8 @@ export function SpaceView({
   ) => {
     const filters = { ...transactionFilters, ...change };
     return navigate({
-      to: "/spaces/$spaceId",
-      params: { spaceId: space.id },
+      to: "/spaces/$spaceSlug",
+      params: { spaceSlug: space.slug },
       search: (prev) => ({
         ...prev,
         query:
@@ -145,8 +145,8 @@ export function SpaceView({
 
   const setTransactionPage = (page: number) =>
     navigate({
-      to: "/spaces/$spaceId",
-      params: { spaceId: space.id },
+      to: "/spaces/$spaceSlug",
+      params: { spaceSlug: space.slug },
       search: (prev) => ({ ...prev, page: page === 1 ? undefined : page }),
       resetScroll: false,
     });
@@ -164,8 +164,8 @@ export function SpaceView({
             renderRoot={(props) => (
               <Link
                 {...props}
-                to="/spaces/$spaceId/settings"
-                params={{ spaceId: space.id }}
+                to="/spaces/$spaceSlug/settings"
+                params={{ spaceSlug: space.slug }}
               />
             )}
           >
@@ -187,7 +187,7 @@ export function SpaceView({
       <TransactionList
         locale={locale}
         defaultCurrency={defaultCurrency}
-        spaceId={space.id}
+        spaceSlug={space.slug}
         members={members}
         aliases={aliases}
         aliasMembers={aliasMembers}

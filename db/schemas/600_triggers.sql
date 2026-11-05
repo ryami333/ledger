@@ -35,6 +35,9 @@ CREATE OR REPLACE TRIGGER "transactions_set_updated_by" BEFORE INSERT OR UPDATE 
 -- row, at the end of the database transaction. Thus a function of PLAN.md, D9
 -- can replace the rows of a list in more than one statement.
 
+-- A new space with no slug gets its ID as slug.
+CREATE OR REPLACE TRIGGER "spaces_set_slug" BEFORE INSERT ON "public"."spaces" FOR EACH ROW EXECUTE FUNCTION "public"."set_space_slug"();
+
 -- Each space has exactly one default currency (PLAN.md, D5).
 CREATE CONSTRAINT TRIGGER "spaces_check_default_currency" AFTER INSERT ON "public"."spaces" DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION "public"."check_space_default_currency"();
 CREATE CONSTRAINT TRIGGER "space_currencies_check_default" AFTER INSERT OR DELETE OR UPDATE ON "public"."space_currencies" DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION "public"."check_space_default_currency"();

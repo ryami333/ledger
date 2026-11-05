@@ -2,9 +2,9 @@ import { SpaceSettingsView } from "../components/views/SpaceSettingsView/SpaceSe
 import { getSpaceSettingsServerFn } from "../serverFunctions/getSpaceSettingsServerFn.ts";
 import { createFileRoute } from "@tanstack/react-router";
 
-export const Route = createFileRoute("/_app/spaces/$spaceId/settings")({
+export const Route = createFileRoute("/_app/spaces/$spaceSlug/settings")({
   loader: ({ params }) =>
-    getSpaceSettingsServerFn({ data: { spaceId: params.spaceId } }),
+    getSpaceSettingsServerFn({ data: { spaceSlug: params.spaceSlug } }),
   head: ({ loaderData }) => ({
     meta: [
       { title: `Settings · ${loaderData?.space.title ?? "Space"} · ledger` },

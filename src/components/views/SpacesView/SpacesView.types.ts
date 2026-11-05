@@ -1,6 +1,7 @@
 /** One space on the page `/`. */
 export type SpaceSummary = {
   id: string;
+  slug: string;
   title: string;
   description: string | null;
   memberCount: number;

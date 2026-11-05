@@ -22,19 +22,19 @@ import { z } from "zod";
  */
 export const getSpaceServerFn = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
-  .validator(z.object({ spaceId: z.guid() }))
+  .validator(z.object({ spaceSlug: z.string() }))
   .handler(async ({ data, context }) => {
     const { data: space, error } = await context.db
       .from("spaces")
       .select(
-        `id, title, description,
+        `id, slug, title, description,
         members(id, name, archived_at),
         aliases(id, name, alias_members(member_id)),
         space_currencies(currency, rate::text, is_default),
         transactions(id, title, description, amount_minor, currency, rate::text, transaction_date, created_at,
           transaction_parties(side, member_id, alias_id, share_minor))`,
       )
-      .eq("id", data.spaceId)
+      .eq("slug", data.spaceSlug)
       .maybeSingle();
     if (error) {
       return throwDatabaseError({
@@ -157,6 +157,7 @@ export const getSpaceServerFn = createServerFn({ method: "GET" })
       defaultCurrency,
       space: {
         id: space.id,
+        slug: space.slug,
         title: space.title,
         description: space.description,
       },

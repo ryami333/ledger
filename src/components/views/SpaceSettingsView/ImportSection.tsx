@@ -43,11 +43,13 @@ const VISIBLE_PROBLEM_COUNT = 20;
  */
 export function ImportSection({
   spaceId,
+  spaceSlug,
   locale,
   defaultCurrency,
   members,
 }: {
   spaceId: string;
+  spaceSlug: string;
   locale: string;
   defaultCurrency: string;
   members: SettingsMember[];
@@ -163,7 +165,11 @@ export function ImportSection({
             {formatCount(importedCount)} transactions are imported.{" "}
             <Anchor
               renderRoot={(props) => (
-                <Link {...props} to="/spaces/$spaceId" params={{ spaceId }} />
+                <Link
+                  {...props}
+                  to="/spaces/$spaceSlug"
+                  params={{ spaceSlug }}
+                />
               )}
             >
               Show the Transactions

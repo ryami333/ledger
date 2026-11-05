@@ -24,7 +24,7 @@ revoke all on all tables in schema public from anon, authenticated;
 grant select on all tables in schema public to authenticated;
 
 grant insert ("title", "description") on "public"."spaces" to authenticated;
-grant update ("title", "description") on "public"."spaces" to authenticated;
+grant update ("slug", "title", "description") on "public"."spaces" to authenticated;
 grant delete on "public"."spaces" to authenticated;
 
 grant insert ("space_id", "currency", "rate", "is_default") on "public"."space_currencies" to authenticated;
@@ -54,6 +54,7 @@ grant delete on "public"."transaction_parties" to authenticated;
 revoke all on schema "better_auth" from public, anon, authenticated;
 
 -- Functions. A trigger function needs no EXECUTE grant for the caller.
+revoke execute on function "public"."set_space_slug"() from public, anon, authenticated;
 revoke execute on function "public"."set_created_at"() from public, anon, authenticated;
 revoke execute on function "public"."set_updated_at"() from public, anon, authenticated;
 revoke execute on function "public"."set_actor_on_insert"() from public, anon, authenticated;

@@ -14,7 +14,7 @@ import { Anchor, Stack, Title } from "@mantine/core";
 import { Link } from "@tanstack/react-router";
 
 /**
- * The page `/spaces/$spaceId/settings`: the details, the members, the
+ * The page `/spaces/$spaceSlug/settings`: the details, the members, the
  * aliases, and the currencies of a space, the CSV import, and the delete of
  * the space (PLAN.md, UI).
  */
@@ -39,8 +39,8 @@ export function SpaceSettingsView({
           renderRoot={(props) => (
             <Link
               {...props}
-              to="/spaces/$spaceId"
-              params={{ spaceId: space.id }}
+              to="/spaces/$spaceSlug"
+              params={{ spaceSlug: space.slug }}
             />
           )}
         >
@@ -49,7 +49,7 @@ export function SpaceSettingsView({
         <Title order={1}>Settings</Title>
       </Stack>
       <SpaceDetailsSection
-        key={`${space.title}\n${space.description}`}
+        key={`${space.title}\n${space.description}\n${space.slug}`}
         space={space}
       />
       <MembersSection spaceId={space.id} members={members} />
@@ -64,6 +64,7 @@ export function SpaceSettingsView({
       />
       <ImportSection
         spaceId={space.id}
+        spaceSlug={space.slug}
         locale={locale}
         defaultCurrency={
           currencies.find((currency) => currency.isDefault)?.currency ?? ""

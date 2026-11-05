@@ -11,6 +11,21 @@ CREATE OR REPLACE FUNCTION "public"."current_user_id"() RETURNS "uuid"
   )::uuid;
 $$;
 
+-- Gives a new space its ID as slug when the insert sends no slug. The user
+-- can change the slug later.
+CREATE OR REPLACE FUNCTION "public"."set_space_slug"() RETURNS "trigger"
+    LANGUAGE "plpgsql"
+    SET "search_path" TO ''
+    AS $$
+begin
+  if new.slug is null then
+    new.slug := new.id::text;
+  end if;
+
+  return new;
+end;
+$$;
+
 -- Sets created_at on INSERT and keeps it on UPDATE. The column default applies
 -- only when the client sends no value. Thus no caller can send or change
 -- created_at.

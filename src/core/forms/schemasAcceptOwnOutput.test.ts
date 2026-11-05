@@ -1,5 +1,6 @@
 import { aliasFormSchema } from "./aliasFormSchema.ts";
 import { currencyFormSchema } from "./currencyFormSchema.ts";
+import { spaceDetailsFormSchema } from "./spaceDetailsFormSchema.ts";
 import { spaceFormSchema } from "./spaceFormSchema.ts";
 import { describe, expect, it } from "vitest";
 
@@ -15,6 +16,10 @@ describe("the form schemas of Phase 4", () => {
           default_currency: "EUR",
           member_names: [" Barack ", ""],
         },
+      },
+      {
+        schema: spaceDetailsFormSchema,
+        input: { title: " Trip ", description: "", slug: " Road-Trip " },
       },
       {
         schema: aliasFormSchema,

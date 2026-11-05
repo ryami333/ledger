@@ -60,10 +60,10 @@ export function NewSpaceModal({
 
   const onSubmit = async (values: SpaceFormOutput): Promise<void> => {
     try {
-      const { spaceId } = await createSpaceServerFn({ data: values });
+      const { spaceSlug } = await createSpaceServerFn({ data: values });
       onRequestClose();
       form.reset(defaultValues);
-      await navigate({ to: "/spaces/$spaceId", params: { spaceId } });
+      await navigate({ to: "/spaces/$spaceSlug", params: { spaceSlug } });
     } catch (err) {
       form.setError("root", {
         message:

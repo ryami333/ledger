@@ -14,8 +14,8 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as AppIndexRouteImport } from './routes/_app.index'
 import { Route as AuthSignInRouteImport } from './routes/auth.sign-in'
 import { Route as ApiAuthSplatRouteImport } from './routes/api.auth.$'
-import { Route as AppSpacesSpaceIdIndexRouteImport } from './routes/_app.spaces.$spaceId.index'
-import { Route as AppSpacesSpaceIdSettingsRouteImport } from './routes/_app.spaces.$spaceId.settings'
+import { Route as AppSpacesSpaceSlugIndexRouteImport } from './routes/_app.spaces.$spaceSlug.index'
+import { Route as AppSpacesSpaceSlugSettingsRouteImport } from './routes/_app.spaces.$spaceSlug.settings'
 
 const AppRoute = AppRouteImport.update({
   id: '/_app',
@@ -41,15 +41,15 @@ const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   path: '/api/auth/$',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AppSpacesSpaceIdIndexRoute = AppSpacesSpaceIdIndexRouteImport.update({
-  id: '/spaces/$spaceId/',
-  path: '/spaces/$spaceId/',
+const AppSpacesSpaceSlugIndexRoute = AppSpacesSpaceSlugIndexRouteImport.update({
+  id: '/spaces/$spaceSlug/',
+  path: '/spaces/$spaceSlug/',
   getParentRoute: () => AppRoute,
 } as any)
-const AppSpacesSpaceIdSettingsRoute =
-  AppSpacesSpaceIdSettingsRouteImport.update({
-    id: '/spaces/$spaceId/settings',
-    path: '/spaces/$spaceId/settings',
+const AppSpacesSpaceSlugSettingsRoute =
+  AppSpacesSpaceSlugSettingsRouteImport.update({
+    id: '/spaces/$spaceSlug/settings',
+    path: '/spaces/$spaceSlug/settings',
     getParentRoute: () => AppRoute,
   } as any)
 
@@ -58,16 +58,16 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/auth/sign-in': typeof AuthSignInRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
-  '/spaces/$spaceId/settings': typeof AppSpacesSpaceIdSettingsRoute
-  '/spaces/$spaceId/': typeof AppSpacesSpaceIdIndexRoute
+  '/spaces/$spaceSlug/settings': typeof AppSpacesSpaceSlugSettingsRoute
+  '/spaces/$spaceSlug/': typeof AppSpacesSpaceSlugIndexRoute
 }
 export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/auth/sign-in': typeof AuthSignInRoute
   '/': typeof AppIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
-  '/spaces/$spaceId/settings': typeof AppSpacesSpaceIdSettingsRoute
-  '/spaces/$spaceId': typeof AppSpacesSpaceIdIndexRoute
+  '/spaces/$spaceSlug/settings': typeof AppSpacesSpaceSlugSettingsRoute
+  '/spaces/$spaceSlug': typeof AppSpacesSpaceSlugIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -76,8 +76,8 @@ export interface FileRoutesById {
   '/auth/sign-in': typeof AuthSignInRoute
   '/_app/': typeof AppIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
-  '/_app/spaces/$spaceId/settings': typeof AppSpacesSpaceIdSettingsRoute
-  '/_app/spaces/$spaceId/': typeof AppSpacesSpaceIdIndexRoute
+  '/_app/spaces/$spaceSlug/settings': typeof AppSpacesSpaceSlugSettingsRoute
+  '/_app/spaces/$spaceSlug/': typeof AppSpacesSpaceSlugIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -86,16 +86,16 @@ export interface FileRouteTypes {
     | '/login'
     | '/auth/sign-in'
     | '/api/auth/$'
-    | '/spaces/$spaceId/settings'
-    | '/spaces/$spaceId/'
+    | '/spaces/$spaceSlug/settings'
+    | '/spaces/$spaceSlug/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/login'
     | '/auth/sign-in'
     | '/'
     | '/api/auth/$'
-    | '/spaces/$spaceId/settings'
-    | '/spaces/$spaceId'
+    | '/spaces/$spaceSlug/settings'
+    | '/spaces/$spaceSlug'
   id:
     | '__root__'
     | '/_app'
@@ -103,8 +103,8 @@ export interface FileRouteTypes {
     | '/auth/sign-in'
     | '/_app/'
     | '/api/auth/$'
-    | '/_app/spaces/$spaceId/settings'
-    | '/_app/spaces/$spaceId/'
+    | '/_app/spaces/$spaceSlug/settings'
+    | '/_app/spaces/$spaceSlug/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -151,18 +151,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAuthSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/_app/spaces/$spaceId/': {
-      id: '/_app/spaces/$spaceId/'
-      path: '/spaces/$spaceId'
-      fullPath: '/spaces/$spaceId/'
-      preLoaderRoute: typeof AppSpacesSpaceIdIndexRouteImport
+    '/_app/spaces/$spaceSlug/': {
+      id: '/_app/spaces/$spaceSlug/'
+      path: '/spaces/$spaceSlug'
+      fullPath: '/spaces/$spaceSlug/'
+      preLoaderRoute: typeof AppSpacesSpaceSlugIndexRouteImport
       parentRoute: typeof AppRoute
     }
-    '/_app/spaces/$spaceId/settings': {
-      id: '/_app/spaces/$spaceId/settings'
-      path: '/spaces/$spaceId/settings'
-      fullPath: '/spaces/$spaceId/settings'
-      preLoaderRoute: typeof AppSpacesSpaceIdSettingsRouteImport
+    '/_app/spaces/$spaceSlug/settings': {
+      id: '/_app/spaces/$spaceSlug/settings'
+      path: '/spaces/$spaceSlug/settings'
+      fullPath: '/spaces/$spaceSlug/settings'
+      preLoaderRoute: typeof AppSpacesSpaceSlugSettingsRouteImport
       parentRoute: typeof AppRoute
     }
   }
@@ -170,14 +170,14 @@ declare module '@tanstack/react-router' {
 
 interface AppRouteChildren {
   AppIndexRoute: typeof AppIndexRoute
-  AppSpacesSpaceIdSettingsRoute: typeof AppSpacesSpaceIdSettingsRoute
-  AppSpacesSpaceIdIndexRoute: typeof AppSpacesSpaceIdIndexRoute
+  AppSpacesSpaceSlugSettingsRoute: typeof AppSpacesSpaceSlugSettingsRoute
+  AppSpacesSpaceSlugIndexRoute: typeof AppSpacesSpaceSlugIndexRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
   AppIndexRoute: AppIndexRoute,
-  AppSpacesSpaceIdSettingsRoute: AppSpacesSpaceIdSettingsRoute,
-  AppSpacesSpaceIdIndexRoute: AppSpacesSpaceIdIndexRoute,
+  AppSpacesSpaceSlugSettingsRoute: AppSpacesSpaceSlugSettingsRoute,
+  AppSpacesSpaceSlugIndexRoute: AppSpacesSpaceSlugIndexRoute,
 }
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)

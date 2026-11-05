@@ -1,4 +1,4 @@
-import { spaceFormSchema } from "../../../core/forms/spaceFormSchema.ts";
+import { spaceDetailsFormSchema } from "../../../core/forms/spaceDetailsFormSchema.ts";
 import { updateSpaceServerFn } from "../../../serverFunctions/updateSpaceServerFn.ts";
 import { SettingsSection } from "./SettingsSection.tsx";
 import type { SettingsSpace } from "./SpaceSettingsView.types.ts";
@@ -11,34 +11,45 @@ import {
   TextInput,
   Textarea,
 } from "@mantine/core";
-import { useRouter } from "@tanstack/react-router";
+import { useNavigate, useRouter } from "@tanstack/react-router";
 import { useForm } from "react-hook-form";
 import { type z } from "zod";
 
-const spaceDetailsSchema = spaceFormSchema.pick({
-  title: true,
-  description: true,
-});
-
-/** The title and the description of the space. */
+/**
+ * The title, the description, and the slug of the space. A new slug changes
+ * the URL of the space, thus the page goes to the new URL.
+ */
 export function SpaceDetailsSection({ space }: { space: SettingsSpace }) {
   const router = useRouter();
+  const navigate = useNavigate();
   const form = useForm<
-    z.input<typeof spaceDetailsSchema>,
+    z.input<typeof spaceDetailsFormSchema>,
     unknown,
-    z.output<typeof spaceDetailsSchema>
+    z.output<typeof spaceDetailsFormSchema>
   >({
-    resolver: zodResolver(spaceDetailsSchema),
-    defaultValues: { title: space.title, description: space.description ?? "" },
+    resolver: zodResolver(spaceDetailsFormSchema),
+    defaultValues: {
+      title: space.title,
+      description: space.description ?? "",
+      slug: space.slug,
+    },
   });
   const { errors, isSubmitting, isDirty } = form.formState;
 
   const onSubmit = async (
-    values: z.output<typeof spaceDetailsSchema>,
+    values: z.output<typeof spaceDetailsFormSchema>,
   ): Promise<void> => {
     try {
       await updateSpaceServerFn({ data: { ...values, spaceId: space.id } });
-      await router.invalidate();
+      if (values.slug === space.slug) {
+        await router.invalidate();
+      } else {
+        await navigate({
+          to: "/spaces/$spaceSlug/settings",
+          params: { spaceSlug: values.slug },
+          replace: true,
+        });
+      }
     } catch (err) {
       form.setError("root", {
         message:
@@ -66,6 +77,13 @@ export function SpaceDetailsSection({ space }: { space: SettingsSpace }) {
             minRows={2}
             error={errors.description?.message}
             {...form.register("description")}
+          />
+          <TextInput
+            label="Slug"
+            description="The name of the space in its URL, for example road-trip-2026."
+            required
+            error={errors.slug?.message}
+            {...form.register("slug")}
           />
           <Group justify="flex-end">
             <Button type="submit" loading={isSubmitting} disabled={!isDirty}>

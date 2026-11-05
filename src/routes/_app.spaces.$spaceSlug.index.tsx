@@ -29,10 +29,10 @@ const spaceSearchSchema = z.object({
   page: z.number().int().min(1).optional().catch(undefined),
 });
 
-export const Route = createFileRoute("/_app/spaces/$spaceId/")({
+export const Route = createFileRoute("/_app/spaces/$spaceSlug/")({
   validateSearch: spaceSearchSchema,
   loader: ({ params }) =>
-    getSpaceServerFn({ data: { spaceId: params.spaceId } }),
+    getSpaceServerFn({ data: { spaceSlug: params.spaceSlug } }),
   head: ({ loaderData }) => ({
     meta: [{ title: `${loaderData?.space.title ?? "Space"} · ledger` }],
   }),

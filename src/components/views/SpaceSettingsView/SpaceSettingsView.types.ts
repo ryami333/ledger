@@ -26,6 +26,7 @@ export type SettingsCurrency = {
 /** The space on the settings page. */
 export type SettingsSpace = {
   id: string;
+  slug: string;
   title: string;
   description: string | null;
 };

@@ -14,7 +14,7 @@ export const getSpacesServerFn = createServerFn({ method: "GET" })
     const { data, error } = await context.db
       .from("spaces")
       .select(
-        "id, title, description, members(count), transactions(transaction_date)",
+        "id, slug, title, description, members(count), transactions(transaction_date)",
       )
       .order("created_at", { ascending: false })
       .order("transaction_date", {
@@ -33,6 +33,7 @@ export const getSpacesServerFn = createServerFn({ method: "GET" })
       locale: env.APP_LOCALE,
       spaces: (data ?? []).map((space) => ({
         id: space.id,
+        slug: space.slug,
         title: space.title,
         description: space.description,
         memberCount: space.members[0]?.count ?? 0,

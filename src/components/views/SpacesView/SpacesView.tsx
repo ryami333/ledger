@@ -47,8 +47,8 @@ export function SpacesView({
               renderRoot={(props) => (
                 <Link
                   {...props}
-                  to="/spaces/$spaceId"
-                  params={{ spaceId: space.id }}
+                  to="/spaces/$spaceSlug"
+                  params={{ spaceSlug: space.slug }}
                 />
               )}
             >

@@ -367,7 +367,10 @@ stacks can run at the same time:
 All tables are in `public`. Each table has `created_at` and `updated_at`, which triggers set.
 Each table with a single primary key has `id uuid` (default `gen_random_uuid()`).
 
-- **`spaces`**: `title` (not empty), `description` (nullable), `created_by`, `updated_by`.
+- **`spaces`**: `slug` (unique; small letters, digits, and single hyphens; 100 characters or
+  less), `title` (not empty), `description` (nullable), `created_by`, `updated_by`. The
+  slug is the route identifier of the space. A new space gets its ID as slug. The user can
+  change the slug in the settings.
 - **`space_currencies`**: `space_id`, `currency` (ISO 4217: 3 capital letters), `rate`
   (`numeric(18, 8)`, greater than 0), `is_default`. Primary key `(space_id, currency)`. A
   partial unique index on `space_id` where `is_default` allows one default currency for each
@@ -426,7 +429,7 @@ All pages use Mantine, inside one `AppShell` with the product name and a sign-ou
 - **`/`** (`SpacesView`): the spaces as cards (title, description, member count, date of the
   last transaction). A "New Space" button opens a modal: title, description, default
   currency, and the first member names.
-- **`/spaces/$spaceId`** (`SpaceView`):
+- **`/spaces/$spaceSlug`** (`SpaceView`):
   - Header: title, description, a "Space Settings" button, and the "Add Transaction" button.
   - Balances panel: one line for each member, in the default currency (D10).
   - Transaction list: date, title, amount, and a short line, for example "Obamas' Shared
@@ -455,7 +458,8 @@ All pages use Mantine, inside one `AppShell` with the product name and a sign-ou
     The search of the transaction list reads it.
   - "Save", and on an existing transaction "Delete". Delete opens a `ConfirmModal` on top of
     the drawer (`Modal.Stack`).
-- **`/spaces/$spaceId/settings`** (`SpaceSettingsView`):
+- **`/spaces/$spaceSlug/settings`** (`SpaceSettingsView`):
+  - Details: title, description, slug. A new slug changes the URL of the space.
   - Members: add, rename, archive, delete (D8).
   - Aliases: add, rename, change members, delete (D7).
   - Currencies: add, remove, set the rate ("1 USD = 0.92 EUR"), select the default currency

@@ -5,7 +5,8 @@ import { createServerFn } from "@tanstack/react-start";
 
 /**
  * Makes a space with its default currency and its first members, in one
- * database transaction (PLAN.md, D9). Returns the ID of the space.
+ * database transaction (PLAN.md, D9). Returns the slug of the space, for
+ * the route of the space page.
  */
 export const createSpaceServerFn = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
@@ -27,5 +28,17 @@ export const createSpaceServerFn = createServerFn({ method: "POST" })
         },
       });
     }
-    return { spaceId };
+    const { data: space, error: readError } = await context.db
+      .from("spaces")
+      .select("slug")
+      .eq("id", spaceId)
+      .maybeSingle();
+    if (readError || !space) {
+      return throwDatabaseError({
+        operation: "createSpaceServerFn",
+        error: readError,
+        messages: { fallback: "The space cannot be read." },
+      });
+    }
+    return { spaceSlug: space.slug };
   });

@@ -3,6 +3,7 @@ import type { TransactionSide } from "../../../core/balances/splitSide.ts";
 /** The space on the space page. */
 export type SpaceDetails = {
   id: string;
+  slug: string;
   title: string;
   description: string | null;
 };

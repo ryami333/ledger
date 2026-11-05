@@ -25,7 +25,7 @@ const cx = classNames.bind(styles);
 export function TransactionList({
   locale,
   defaultCurrency,
-  spaceId,
+  spaceSlug,
   members,
   aliases,
   aliasMembers,
@@ -40,7 +40,7 @@ export function TransactionList({
 }: {
   locale: string;
   defaultCurrency: string;
-  spaceId: string;
+  spaceSlug: string;
   members: SpaceMember[];
   aliases: SpaceAlias[];
   aliasMembers: SpaceAliasMember[];
@@ -106,8 +106,8 @@ export function TransactionList({
                 <li key={transaction.id} className={cx("item")}>
                   <Link
                     className={cx("row")}
-                    to="/spaces/$spaceId"
-                    params={{ spaceId }}
+                    to="/spaces/$spaceSlug"
+                    params={{ spaceSlug }}
                     search={(prev) => ({
                       ...prev,
                       transaction: transaction.id,
