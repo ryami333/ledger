@@ -1,3 +1,5 @@
+import { paginateItems } from "../../../core/pagination/paginateItems.ts";
+import { filterTransactions } from "../../../core/transactions/filterTransactions.ts";
 import { BalancesPanel } from "./BalancesPanel.tsx";
 import type {
   SpaceAlias,
@@ -7,12 +9,17 @@ import type {
   SpaceDetails,
   SpaceMember,
   SpaceTransaction,
+  TransactionFilterValues,
 } from "./SpaceView.types.ts";
 import { TransactionDrawer } from "./TransactionDrawer.tsx";
 import { TransactionList } from "./TransactionList.tsx";
 import { Button, Group, Menu, Stack, Text, Title } from "@mantine/core";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
+import { Temporal } from "temporal-polyfill";
+
+/** The number of transactions on one page of the transaction list. */
+const TRANSACTIONS_PAGE_SIZE = 50;
 
 /**
  * The page `/spaces/$spaceId` (PLAN.md, UI): the header, the balances panel,
@@ -20,6 +27,8 @@ import { useState } from "react";
  *
  * `openTransaction` is the search param `transaction`: the ID of the open
  * transaction, `"new"`, or `null` when the drawer is closed.
+ * `transactionFilters` holds the other search params: the filters and the
+ * page of the transaction list.
  */
 export function SpaceView({
   locale,
@@ -33,6 +42,7 @@ export function SpaceView({
   transactions,
   balances,
   openTransaction,
+  transactionFilters,
 }: {
   locale: string;
   /** Today in `APP_TIME_ZONE`, as `YYYY-MM-DD`. */
@@ -46,6 +56,7 @@ export function SpaceView({
   transactions: SpaceTransaction[];
   balances: SpaceBalance[];
   openTransaction: string | null;
+  transactionFilters: TransactionFilterValues;
 }) {
   const navigate = useNavigate();
   const selectedTransaction =
@@ -81,11 +92,63 @@ export function SpaceView({
     }));
   }
 
+  // The drawer keeps the filters and the page of the transaction list.
   const setOpenTransaction = (transaction: string | null) =>
     navigate({
       to: "/spaces/$spaceId",
       params: { spaceId: space.id },
-      search: transaction === null ? {} : { transaction },
+      search: (prev) => ({ ...prev, transaction: transaction ?? undefined }),
+      resetScroll: false,
+    });
+
+  const filteredTransactions = filterTransactions({
+    transactions,
+    searchText: transactionFilters.searchText,
+    fromDate:
+      transactionFilters.fromDate === null
+        ? null
+        : Temporal.PlainDate.from(transactionFilters.fromDate),
+    toDate:
+      transactionFilters.toDate === null
+        ? null
+        : Temporal.PlainDate.from(transactionFilters.toDate),
+    defaultCurrency,
+    locale,
+  });
+  const transactionPage = paginateItems({
+    items: filteredTransactions,
+    page: transactionFilters.page,
+    pageSize: TRANSACTIONS_PAGE_SIZE,
+  });
+
+  // A change of a filter goes back to the first page. The search param of a
+  // value with no effect goes away, so the URL stays short.
+  const setTransactionFilters = (
+    change: Partial<Omit<TransactionFilterValues, "page">>,
+  ) => {
+    const filters = { ...transactionFilters, ...change };
+    return navigate({
+      to: "/spaces/$spaceId",
+      params: { spaceId: space.id },
+      search: (prev) => ({
+        ...prev,
+        query:
+          filters.searchText.trim() === "" ? undefined : filters.searchText,
+        from: filters.fromDate ?? undefined,
+        to: filters.toDate ?? undefined,
+        page: undefined,
+      }),
+      replace: true,
+      resetScroll: false,
+    });
+  };
+
+  const setTransactionPage = (page: number) =>
+    navigate({
+      to: "/spaces/$spaceId",
+      params: { spaceId: space.id },
+      search: (prev) => ({ ...prev, page: page === 1 ? undefined : page }),
+      resetScroll: false,
     });
 
   return (
@@ -134,7 +197,14 @@ export function SpaceView({
         members={members}
         aliases={aliases}
         aliasMembers={aliasMembers}
-        transactions={transactions}
+        totalCount={transactions.length}
+        filteredCount={filteredTransactions.length}
+        transactions={transactionPage.pageItems}
+        filters={transactionFilters}
+        onFiltersChange={setTransactionFilters}
+        page={transactionPage.page}
+        pageCount={transactionPage.pageCount}
+        onPageChange={setTransactionPage}
       />
       <TransactionDrawer
         isOpen={isDrawerOpen}

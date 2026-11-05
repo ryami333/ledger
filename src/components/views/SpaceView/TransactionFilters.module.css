@@ -1,0 +1,22 @@
+.root {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--mantine-spacing-xs);
+}
+
+.search {
+  flex: 1 1 16rem;
+
+  /* The input has its own clear button. */
+  & input::-webkit-search-cancel-button {
+    appearance: none;
+  }
+}
+
+.dates {
+  flex: 0 1 18rem;
+
+  @media (width <= 600px) {
+    flex-grow: 1;
+  }
+}

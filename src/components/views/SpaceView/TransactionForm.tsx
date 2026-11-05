@@ -358,13 +358,6 @@ export function TransactionForm({
             error={errors.title?.message}
             {...form.register("title")}
           />
-          <Textarea
-            label="Description"
-            autosize
-            minRows={2}
-            error={errors.description?.message}
-            {...form.register("description")}
-          />
           <Group grow align="flex-start">
             <Controller
               control={form.control}
@@ -493,6 +486,14 @@ export function TransactionForm({
               {preview}
             </Text>
           )}
+          <Textarea
+            label="Additional notes"
+            description="Any additional detail that might help to identify or contextualise a transaction – used in search results."
+            autosize
+            minRows={2}
+            error={errors.description?.message}
+            {...form.register("description")}
+          />
         </Stack>
       </Drawer.Inner>
       <Drawer.Footer>

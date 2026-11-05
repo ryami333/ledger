@@ -70,3 +70,14 @@ export type SpaceBalance = {
   name: string;
   balance_minor: bigint;
 };
+
+/**
+ * The filters of the transaction list, from the search params. The dates are
+ * the text `YYYY-MM-DD`, or `null` for no limit. `page` starts at 1.
+ */
+export type TransactionFilterValues = {
+  searchText: string;
+  fromDate: string | null;
+  toDate: string | null;
+  page: number;
+};

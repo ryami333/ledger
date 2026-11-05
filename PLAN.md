@@ -407,16 +407,26 @@ All pages use Mantine, inside one `AppShell` with the product name and a sign-ou
   - Transaction list: date, title, amount, and a short line, for example "Obamas' Shared
     Account paid for everyone". An amount in a different currency also shows the converted
     amount, for example "$40.00 (€36.80)". One click on a row opens the transaction drawer.
+  - Above the transaction list: a search input with a clear button, and a date range. The
+    search finds a text in the title or the description, with no difference between upper
+    case and lower case. It also finds an amount or a converted amount: "44,76", "44.76",
+    "1.234,56", and "1,234.56" are all correct (`filterTransactions` in `src/core`).
+  - The transaction list shows 50 transactions on one page, with a `Pagination` under it.
+    The filters and the page apply in the browser, because the loader reads all
+    transactions for the balances.
   - The search param `transaction` holds the ID of the open transaction, or `new`. Thus a
-    reload or a link opens the same drawer.
+    reload or a link opens the same drawer. The search params `query`, `from`, `to`, and
+    `page` hold the filters and the page. A change of a filter goes back to page 1.
 - **Transaction drawer**: one form for a new and an existing transaction:
-  - Title, Description, Amount (`NumberInput`, with the decimals of the currency), Currency
+  - Title, Amount (`NumberInput`, with the decimals of the currency), Currency
     (`Select` of the space currencies, the default currency first), Date (`DateInput`).
   - Paid by, Paid for: one `MultiSelect` each, with the groups "Members" and "Aliases", and
     an "Advanced split" button each for a custom split (D6). Paid
     to has an "Everyone" button (D6).
   - A preview line under the form, from `src/core`: "Obamas' Shared Account and Donald
     each paid €50.00. Each of 4 members got €25.00."
+  - Additional notes (the column `description`), at the end of the form, with a help text.
+    The search of the transaction list reads it.
   - "Save", and on an existing transaction "Delete". Delete opens a `ConfirmModal` on top of
     the drawer (`Modal.Stack`).
 - **`/spaces/$spaceId/settings`** (`SpaceSettingsView`):
@@ -792,7 +802,7 @@ Notes:
 - A change history of each transaction, with audit rows from database triggers, as in
   Clarity. Then an undo for a delete.
 - An optimistic lock on `updated_at` for two editors at the same time.
-- Categories, search, and filters (in the URL search params).
+- Categories, and a filter by member or by category (in the URL search params).
 - Receipt photos.
 - CSV export of a space.
 - Archive a space.
