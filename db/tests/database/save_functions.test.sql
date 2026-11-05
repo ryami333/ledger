@@ -8,7 +8,7 @@ begin;
 \ir helpers.psql
 \ir fixtures.psql
 
-select plan(27);
+select plan(33);
 
 select tests.authenticate_as('00000000-0000-0000-0000-00000000000a');
 
@@ -271,6 +271,69 @@ select throws_ok(
   'P0002',
   null,
   'save_transaction: a transaction of a different space is refused'
+);
+
+-- import_transactions
+
+select lives_ok(
+  $$ select tests.run_with_deferred_checks($q$
+       select public.import_transactions('10000000-0000-0000-0000-00000000000a',
+         '[{"currency": "THB", "rate": "0.02625"}, {"currency": "EUR", "rate": "3"}]',
+         '[{"title": "Imported dinner", "description": "Imported from Splid",
+            "amount_minor": 3000, "currency": "EUR", "transaction_date": "2025-01-07",
+            "paid_by": [{"member_id": "20000000-0000-0000-0000-0000000000a1", "alias_id": null, "share_minor": null}],
+            "paid_for": [{"member_id": "20000000-0000-0000-0000-0000000000a1", "alias_id": null, "share_minor": 1000},
+                         {"member_id": "20000000-0000-0000-0000-0000000000a2", "alias_id": null, "share_minor": 2000}]},
+           {"title": "Imported boat", "description": null,
+            "amount_minor": 370000, "currency": "THB", "transaction_date": "2025-02-25",
+            "paid_by": [{"member_id": "20000000-0000-0000-0000-0000000000a2", "alias_id": null, "share_minor": null}],
+            "paid_for": [{"member_id": "20000000-0000-0000-0000-0000000000a1", "alias_id": null, "share_minor": null}]}]')
+     $q$) $$,
+  'import_transactions: imports transactions with a new currency'
+);
+
+select results_eq(
+  $$ select currency, rate::text, is_default from public.space_currencies
+     where space_id = '10000000-0000-0000-0000-00000000000a'
+       and currency = 'THB' $$,
+  $$ values ('THB', '0.02625000', false) $$,
+  'import_transactions: adds a new currency'
+);
+
+select ok(
+  (select rate <> 3 from public.space_currencies
+   where space_id = '10000000-0000-0000-0000-00000000000a'
+     and currency = 'EUR'),
+  'import_transactions: keeps the rate of an existing currency'
+);
+
+select results_eq(
+  $$ select transactions.title, transaction_parties.side::text, transaction_parties.share_minor
+     from public.transactions
+     join public.transaction_parties on transaction_parties.transaction_id = transactions.id
+     where transactions.title like 'Imported %'
+     order by transactions.title, transaction_parties.side, transaction_parties.share_minor $$,
+  $$ values ('Imported boat', 'paid_by', null::bigint), ('Imported boat', 'paid_for', null),
+            ('Imported dinner', 'paid_by', null), ('Imported dinner', 'paid_for', 1000),
+            ('Imported dinner', 'paid_for', 2000) $$,
+  'import_transactions: saves each transaction with its parties and shares'
+);
+
+select throws_ok(
+  $$ select public.import_transactions('10000000-0000-0000-0000-00000000000a', '[]',
+       '[{"title": "Bad import", "description": null, "amount_minor": 100,
+          "currency": "EUR", "transaction_date": "2025-01-07",
+          "paid_by": [], "paid_for": [{"member_id": "20000000-0000-0000-0000-0000000000a1"}]}]') $$,
+  '22023',
+  null,
+  'import_transactions: a transaction with an empty side is refused'
+);
+
+select throws_ok(
+  $$ select public.import_transactions('10000000-0000-0000-0000-00000000000a', '{}', '[]') $$,
+  '22023',
+  null,
+  'import_transactions: a value that is not an array is refused'
 );
 
 select * from finish();

@@ -75,3 +75,5 @@ revoke execute on function "public"."save_alias"("uuid", "uuid", "text", "uuid"[
 grant execute on function "public"."save_alias"("uuid", "uuid", "text", "uuid"[]) to authenticated;
 revoke execute on function "public"."save_transaction"("uuid", "uuid", "text", "text", bigint, "text", "date", "jsonb", "jsonb") from public, anon;
 grant execute on function "public"."save_transaction"("uuid", "uuid", "text", "text", bigint, "text", "date", "jsonb", "jsonb") to authenticated;
+revoke execute on function "public"."import_transactions"("uuid", "jsonb", "jsonb") from public, anon;
+grant execute on function "public"."import_transactions"("uuid", "jsonb", "jsonb") to authenticated;

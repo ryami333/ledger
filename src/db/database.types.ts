@@ -362,6 +362,10 @@ export type Database = {
         Returns: string;
       };
       current_user_id: { Args: Record<PropertyKey, never>; Returns: string };
+      import_transactions: {
+        Args: { p_currencies: Json; p_space_id: string; p_transactions: Json };
+        Returns: number;
+      };
       save_alias: {
         Args: {
           p_alias_id: string;

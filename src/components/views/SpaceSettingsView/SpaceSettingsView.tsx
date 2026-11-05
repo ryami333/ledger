@@ -1,6 +1,7 @@
 import { AliasesSection } from "./AliasesSection.tsx";
 import { CurrenciesSection } from "./CurrenciesSection.tsx";
 import { DangerZoneSection } from "./DangerZoneSection.tsx";
+import { ImportSection } from "./ImportSection.tsx";
 import { MembersSection } from "./MembersSection.tsx";
 import { SpaceDetailsSection } from "./SpaceDetailsSection.tsx";
 import type {
@@ -14,8 +15,8 @@ import { Link } from "@tanstack/react-router";
 
 /**
  * The page `/spaces/$spaceId/settings`: the details, the members, the
- * aliases, and the currencies of a space, and the delete of the space
- * (PLAN.md, UI).
+ * aliases, and the currencies of a space, the CSV import, and the delete of
+ * the space (PLAN.md, UI).
  */
 export function SpaceSettingsView({
   locale,
@@ -60,6 +61,14 @@ export function SpaceSettingsView({
         spaceId={space.id}
         locale={locale}
         currencies={currencies}
+      />
+      <ImportSection
+        spaceId={space.id}
+        locale={locale}
+        defaultCurrency={
+          currencies.find((currency) => currency.isDefault)?.currency ?? ""
+        }
+        members={members}
       />
       <DangerZoneSection space={space} />
     </Stack>

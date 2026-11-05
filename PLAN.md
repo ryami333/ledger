@@ -264,8 +264,11 @@ transaction_date, paid_by, paid_for)` inserts or updates the transaction, and re
   parties. `paid_by` and `paid_for` are `jsonb` arrays of `{ "member_id": ... }` or
   `{ "alias_id": ... }`. It refuses an empty side, a party of a different space, a currency
   that is not a space currency, and an archived member in a new transaction.
+- `import_transactions(space_id, currencies, transactions)` adds the space currencies that the
+  space does not have, then calls `save_transaction` for each transaction. The CSV import uses
+  it. It returns the number of imported transactions.
 
-Each function returns the ID of the main row.
+Each other function returns the ID of the main row.
 
 Two users who edit the same transaction at the same time: the last save wins. An optimistic
 lock goes to the roadmap.
@@ -435,6 +438,13 @@ All pages use Mantine, inside one `AppShell` with the product name and a sign-ou
   - Aliases: add, rename, change members, delete (D7).
   - Currencies: add, remove, set the rate ("1 USD = 0.92 EUR"), select the default currency
     (D5).
+  - Import: a Splid export ("Summary" as CSV). The user selects the file and the member of
+    each name in the file. "Check the import" shows the plan with no write: the number of
+    transactions, the duplicates (same date, title, amount, and currency), the new currencies,
+    and the rows that the import skips. Then "Import" calls `import_transactions`.
+    `planSplidImport` in `src/core` makes the plan. Unequal parts give custom shares (D6). The
+    rate of a new currency is the sum of the converted amounts divided by the sum of the
+    amounts. Each imported transaction has the description "Imported from Splid".
   - Danger zone: delete the space. The confirmation asks for the title of the space.
 
 ## Conventions from Clarity

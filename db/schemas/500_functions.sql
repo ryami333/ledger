@@ -456,3 +456,65 @@ begin
   return v_transaction_id;
 end;
 $$;
+
+-- Imports transactions into a space, in one database transaction (PLAN.md,
+-- D9). The CSV import of the settings page calls it. Returns the number of
+-- imported transactions.
+--
+-- p_currencies is a jsonb array of { "currency": "THB", "rate": "0.02625" }.
+-- The function adds each currency that the space does not have. It keeps the
+-- rate of a currency that the space has.
+--
+-- p_transactions is a jsonb array of { "title", "description",
+-- "amount_minor", "currency", "transaction_date", "paid_by", "paid_for" },
+-- with the values of save_transaction. save_transaction saves each one. Thus
+-- each rule of save_transaction applies.
+CREATE OR REPLACE FUNCTION "public"."import_transactions"("p_space_id" "uuid", "p_currencies" "jsonb", "p_transactions" "jsonb") RETURNS integer
+    LANGUAGE "plpgsql" SECURITY INVOKER
+    SET "search_path" TO ''
+    AS $$
+declare
+  v_item jsonb;
+  v_count integer := 0;
+begin
+  if pg_catalog.jsonb_typeof(p_currencies) is distinct from 'array'
+    or pg_catalog.jsonb_typeof(p_transactions) is distinct from 'array'
+  then
+    raise exception 'import_transactions needs two jsonb arrays'
+      using errcode = '22023';
+  end if;
+
+  if not exists (select from public.spaces where spaces.id = p_space_id) then
+    raise exception 'The space % does not exist', p_space_id
+      using errcode = 'P0002';
+  end if;
+
+  insert into public.space_currencies (space_id, currency, rate, is_default)
+  select
+    p_space_id,
+    item ->> 'currency',
+    (item ->> 'rate')::numeric(18, 8),
+    false
+  from pg_catalog.jsonb_array_elements(p_currencies) as item
+  on conflict (space_id, currency) do nothing;
+
+  for v_item in
+    select item from pg_catalog.jsonb_array_elements(p_transactions) as item
+  loop
+    perform public.save_transaction(
+      null,
+      p_space_id,
+      v_item ->> 'title',
+      v_item ->> 'description',
+      (v_item ->> 'amount_minor')::bigint,
+      v_item ->> 'currency',
+      (v_item ->> 'transaction_date')::date,
+      v_item -> 'paid_by',
+      v_item -> 'paid_for'
+    );
+    v_count := v_count + 1;
+  end loop;
+
+  return v_count;
+end;
+$$;
