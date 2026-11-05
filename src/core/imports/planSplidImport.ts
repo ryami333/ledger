@@ -208,8 +208,9 @@ const duplicateKey = ({
  *   the paid member amounts, divided by the amount (PLAN.md, D5). Thus the
  *   balances agree with Splid.
  * - A new currency gets the rate of all its rows: the sum of the converted
- *   amounts, divided by the sum of the amounts. A new transaction then gets
- *   this rate. The import keeps the rate of a currency that the space has.
+ *   amounts, divided by the sum of the amounts. This rate is only the rate of
+ *   the space currency. Each imported transaction keeps the rate of its own
+ *   row. The import keeps the rate of a currency that the space has.
  * - A row with the same date, title, amount, and currency as a transaction
  *   of the space is a duplicate. Each transaction of the space matches one
  *   row only.

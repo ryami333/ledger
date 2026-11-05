@@ -363,6 +363,7 @@ export type Database = {
           p_default_currency: string;
           p_description: string;
           p_member_names: string[];
+          p_slug?: string;
           p_title: string;
         };
         Returns: string;

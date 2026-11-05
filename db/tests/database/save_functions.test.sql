@@ -8,7 +8,7 @@ begin;
 \ir helpers.psql
 \ir fixtures.psql
 
-select plan(42);
+select plan(45);
 
 select tests.authenticate_as('00000000-0000-0000-0000-00000000000a');
 
@@ -35,6 +35,25 @@ select is(
    where spaces.title = 'Washington'),
   2,
   'create_space: adds the first members'
+);
+
+select is(
+  (select slug = id::text from public.spaces where title = 'Washington'),
+  true,
+  'create_space: a space with no slug gets its ID as slug'
+);
+
+select lives_ok(
+  $$ select tests.run_with_deferred_checks($q$
+       select public.create_space('Rome', null, 'EUR', array['Barack'], 'trip-to-rome')
+     $q$) $$,
+  'create_space: makes a space with a slug'
+);
+
+select is(
+  (select slug from public.spaces where title = 'Rome'),
+  'trip-to-rome',
+  'create_space: keeps the slug of the caller'
 );
 
 select throws_ok(

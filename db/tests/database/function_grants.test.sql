@@ -30,7 +30,7 @@ select is_empty(
 );
 
 select ok(
-  has_function_privilege('authenticated', 'public.create_space(text, text, text, text[])', 'execute')
+  has_function_privilege('authenticated', 'public.create_space(text, text, text, text[], text)', 'execute')
   and has_function_privilege('authenticated', 'public.save_space_currencies(uuid, jsonb)', 'execute')
   and has_function_privilege('authenticated', 'public.save_alias(uuid, uuid, text, uuid[])', 'execute')
   and has_function_privilege('authenticated', 'public.save_transaction(uuid, uuid, text, text, bigint, text, text, date, jsonb, jsonb)', 'execute')

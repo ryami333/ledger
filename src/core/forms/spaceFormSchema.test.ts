@@ -7,12 +7,14 @@ describe("spaceFormSchema", () => {
       spaceFormSchema.parse({
         title: " Washington ",
         description: " ",
+        slug: " Washington ",
         default_currency: "EUR",
         member_names: [" Barack ", "", "Michelle", "  "],
       }),
     ).toEqual({
       title: "Washington",
       description: null,
+      slug: "washington",
       default_currency: "EUR",
       member_names: ["Barack", "Michelle"],
     });
@@ -24,6 +26,7 @@ describe("spaceFormSchema", () => {
         .safeParse({
           title: "Washington",
           description: "",
+          slug: "washington",
           default_currency: "EUR",
           member_names: ["Barack", "", " barack"],
         })
@@ -39,17 +42,23 @@ describe("spaceFormSchema", () => {
     ]);
   });
 
-  it("refuses an empty title and an unknown currency", () => {
+  it("refuses an empty title, an empty slug, and an unknown currency", () => {
     expect(
       spaceFormSchema
         .safeParse({
           title: "",
           description: "",
+          slug: "",
           default_currency: "",
           member_names: [],
         })
         .error?.issues.map((issue) => issue.message),
-    ).toEqual(["Enter a title.", "Select a currency."]);
+    ).toEqual([
+      "Enter a title.",
+      "Enter a slug.",
+      "Use only letters, digits, and single hyphens between them.",
+      "Select a currency.",
+    ]);
   });
 
   it("gives the title and the description for the edit form", () => {

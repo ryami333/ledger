@@ -1,5 +1,6 @@
 import { getCurrencyOptions } from "../../../core/currencies/getCurrencyOptions.ts";
 import { spaceFormSchema } from "../../../core/forms/spaceFormSchema.ts";
+import { slugifyTitle } from "../../../core/slugs/slugifyTitle.ts";
 import { createSpaceServerFn } from "../../../serverFunctions/createSpaceServerFn.ts";
 import { Modal } from "../../ui/Modal.tsx";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -13,6 +14,7 @@ import {
   Textarea,
 } from "@mantine/core";
 import { useNavigate } from "@tanstack/react-router";
+import { useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { type z } from "zod";
 import classNames from "classnames/bind";
@@ -26,13 +28,15 @@ type SpaceFormOutput = z.output<typeof spaceFormSchema>;
 const defaultValues: SpaceFormInput = {
   title: "",
   description: "",
+  slug: "",
   default_currency: "EUR",
   member_names: [],
 };
 
 /**
- * The "New space" modal: the title, the description, the default currency,
- * and the first member names (PLAN.md, UI). After the save, it opens the new
+ * The "New space" modal: the title, the slug, the description, the default
+ * currency, and the first member names (PLAN.md, UI). The slug follows the
+ * title until the user changes the slug. After the save, it opens the new
  * space.
  */
 export function NewSpaceModal({
@@ -49,6 +53,8 @@ export function NewSpaceModal({
     resolver: zodResolver(spaceFormSchema),
     defaultValues,
   });
+  // An empty slug follows the title again.
+  const [isSlugEdited, setIsSlugEdited] = useState(false);
   const currencyOptions = getCurrencyOptions(locale);
   const { errors, isSubmitting } = form.formState;
   // The schema can refuse one name of the list. TagsInput shows one error.
@@ -63,6 +69,7 @@ export function NewSpaceModal({
       const { spaceSlug } = await createSpaceServerFn({ data: values });
       onRequestClose();
       form.reset(defaultValues);
+      setIsSlugEdited(false);
       await navigate({ to: "/spaces/$spaceSlug", params: { spaceSlug } });
     } catch (err) {
       form.setError("root", {
@@ -93,7 +100,26 @@ export function NewSpaceModal({
               required
               data-autofocus
               error={errors.title?.message}
-              {...form.register("title")}
+              {...form.register("title", {
+                onChange: (event: React.ChangeEvent<HTMLInputElement>) => {
+                  if (!isSlugEdited) {
+                    form.setValue("slug", slugifyTitle(event.target.value), {
+                      shouldValidate: form.formState.isSubmitted,
+                    });
+                  }
+                },
+              })}
+            />
+            <TextInput
+              label="Slug"
+              description="The name of the space in its URL."
+              placeholder="trip-to-rome"
+              required
+              error={errors.slug?.message}
+              {...form.register("slug", {
+                onChange: (event: React.ChangeEvent<HTMLInputElement>) =>
+                  setIsSlugEdited(event.target.value.trim() !== ""),
+              })}
             />
             <Textarea
               label="Description"

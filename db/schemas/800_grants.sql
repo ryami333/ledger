@@ -23,7 +23,7 @@ revoke all on all tables in schema public from anon, authenticated;
 -- authenticated reads each table and the view app_users.
 grant select on all tables in schema public to authenticated;
 
-grant insert ("title", "description") on "public"."spaces" to authenticated;
+grant insert ("slug", "title", "description") on "public"."spaces" to authenticated;
 grant update ("slug", "title", "description") on "public"."spaces" to authenticated;
 grant delete on "public"."spaces" to authenticated;
 
@@ -68,8 +68,8 @@ revoke execute on function "public"."current_user_id"() from public, anon;
 grant execute on function "public"."current_user_id"() to authenticated;
 
 -- The web app calls the functions of PLAN.md, D9 with the user client.
-revoke execute on function "public"."create_space"("text", "text", "text", "text"[]) from public, anon;
-grant execute on function "public"."create_space"("text", "text", "text", "text"[]) to authenticated;
+revoke execute on function "public"."create_space"("text", "text", "text", "text"[], "text") from public, anon;
+grant execute on function "public"."create_space"("text", "text", "text", "text"[], "text") to authenticated;
 revoke execute on function "public"."save_space_currencies"("uuid", "jsonb") from public, anon;
 grant execute on function "public"."save_space_currencies"("uuid", "jsonb") to authenticated;
 revoke execute on function "public"."save_alias"("uuid", "uuid", "text", "uuid"[]) from public, anon;

@@ -263,15 +263,16 @@ $$;
 
 -- Inserts a space, its default currency with the rate 1, and its first
 -- members (PLAN.md, D9). Returns the ID of the space.
-CREATE OR REPLACE FUNCTION "public"."create_space"("p_title" "text", "p_description" "text", "p_default_currency" "text", "p_member_names" "text"[]) RETURNS "uuid"
+CREATE OR REPLACE FUNCTION "public"."create_space"("p_title" "text", "p_description" "text", "p_default_currency" "text", "p_member_names" "text"[], "p_slug" "text" DEFAULT NULL::"text") RETURNS "uuid"
     LANGUAGE "plpgsql" SECURITY INVOKER
     SET "search_path" TO ''
     AS $$
 declare
   v_space_id uuid;
 begin
-  insert into public.spaces (title, description)
-  values (p_title, p_description)
+  -- A null slug gives the ID of the space as slug (set_space_slug).
+  insert into public.spaces (slug, title, description)
+  values (p_slug, p_title, p_description)
   returning id into v_space_id;
 
   insert into public.space_currencies (space_id, currency, rate, is_default)

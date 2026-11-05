@@ -13,6 +13,7 @@ describe("the form schemas of Phase 4", () => {
         input: {
           title: " Trip ",
           description: " ",
+          slug: "Trip",
           default_currency: "EUR",
           member_names: [" Barack ", ""],
         },

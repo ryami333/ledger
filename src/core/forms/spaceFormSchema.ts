@@ -2,6 +2,7 @@ import {
   currencyCodeSchema,
   optionalTextSchema,
   requiredTextSchema,
+  slugSchema,
 } from "./formFieldSchemas.ts";
 import { z } from "zod";
 
@@ -35,12 +36,13 @@ const memberNamesSchema = z
 
 /**
  * The "New space" modal (PLAN.md, UI). The output has the parameters of
- * `create_space` (D9). The form to edit a space uses only `title` and
- * `description`: use `spaceFormSchema.pick(...)`.
+ * `create_space` (D9). The form to edit a space uses only `title`,
+ * `description`, and `slug`: see `spaceDetailsFormSchema`.
  */
 export const spaceFormSchema = z.object({
   title: requiredTextSchema("Enter a title."),
   description: optionalTextSchema,
+  slug: slugSchema,
   default_currency: currencyCodeSchema,
   member_names: memberNamesSchema,
 });

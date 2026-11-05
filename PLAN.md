@@ -369,8 +369,9 @@ Each table with a single primary key has `id uuid` (default `gen_random_uuid()`)
 
 - **`spaces`**: `slug` (unique; small letters, digits, and single hyphens; 100 characters or
   less), `title` (not empty), `description` (nullable), `created_by`, `updated_by`. The
-  slug is the route identifier of the space. A new space gets its ID as slug. The user can
-  change the slug in the settings.
+  slug is the route identifier of the space. The "New Space" modal gives a slug from the
+  title, and the user can change it. `create_space` with no slug gives the ID as slug. The
+  user can change the slug in the settings.
 - **`space_currencies`**: `space_id`, `currency` (ISO 4217: 3 capital letters), `rate`
   (`numeric(18, 8)`, greater than 0), `is_default`. Primary key `(space_id, currency)`. A
   partial unique index on `space_id` where `is_default` allows one default currency for each
@@ -427,8 +428,8 @@ All pages use Mantine, inside one `AppShell` with the product name and a sign-ou
 
 - **`/login`**: one button, "Sign In with Pocket ID".
 - **`/`** (`SpacesView`): the spaces as cards (title, description, member count, date of the
-  last transaction). A "New Space" button opens a modal: title, description, default
-  currency, and the first member names.
+  last transaction). A "New Space" button opens a modal: title, slug (from the title until
+  the user changes it), description, default currency, and the first member names.
 - **`/spaces/$spaceSlug`** (`SpaceView`):
   - Header: title, description, a "Space Settings" button, and the "Add Transaction" button.
   - Balances panel: one line for each member, in the default currency (D10).
