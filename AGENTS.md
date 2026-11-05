@@ -82,8 +82,8 @@ style also for commit messages, pull-request descriptions, and reviews. Obey the
 ## Tech stack
 
 - **Runtime:** Node 24, Yarn 4, TypeScript 6 strict. The repository is one package
-  with no workspaces. Use `fnm` for other Node
-  versions, for example `fnm exec --using=24.22.2 -- yarn lint`.
+  with no workspaces. `engines.node` in `package.json` sets the Node version. See "Use the
+  Node version of the project".
 - **Web app:** TanStack Start (TanStack Router, Vite, Nitro), React 19 with the React
   Compiler, Mantine 9 (`@mantine/core`, `@mantine/hooks`, `@mantine/dates`), CSS Modules with
   `classnames/bind`, React Hook Form with Zod.
@@ -135,6 +135,30 @@ The local stack uses other ports than stripclub, so both stacks can run at the s
 - Web app: `http://127.0.0.1:3001`
 
 ## Commands
+
+### Use the Node version of the project
+
+`engines.node` in `package.json` sets the Node version of the project. Do not add a
+`.node-version` or an `.nvmrc` file. Run each `node`, `yarn`, and `npx`
+command with this version. The default Node of a shell can be a different version. A
+different version can give different results. Example: the number of decimals of a
+currency comes from the ICU of Node, and Node 22 gives IDR 2 decimals, but Node 24 gives 0.
+
+Use `fnm` as the Node version manager:
+
+- Run each command through `fnm exec` in the repository root, for example
+  `fnm exec -- yarn test`. `fnm exec` reads `engines.node` and uses the latest
+  installed version in its range.
+- A shell does not keep `fnm use` for the next command. Thus write `fnm exec` before
+  each command.
+- If `fnm exec` reports a missing version, run `fnm install`. It installs the latest version
+  in the range of `engines.node`.
+- Before you report a failed test or a failed build, make sure that the command used a
+  version in the range of `engines.node`.
+
+The commands below leave out `fnm exec --` to keep the list short.
+
+### Command list
 
 ```bash
 yarn dev              # Web app dev server on port 3001
