@@ -153,4 +153,102 @@ describe("splitSide", () => {
       }),
     ).toThrow("The alias 8-empty has no members");
   });
+
+  describe("with custom shares", () => {
+    const sharedParty = (memberId: string, shareMinor: bigint) => ({
+      member_id: memberId,
+      alias_id: null,
+      share_minor: shareMinor,
+    });
+
+    it("gives each party its share when the amount is the share total", () => {
+      expect(
+        splitSide({
+          amountMinor: 10000n,
+          parties: [sharedParty(barack, 4000n), sharedParty(donald, 6000n)],
+          aliasMembers,
+        }),
+      ).toEqual(
+        new Map([
+          [barack, 4000n],
+          [donald, 6000n],
+        ]),
+      );
+    });
+
+    it("splits a converted amount in proportion to the shares", () => {
+      // A share total of 100.00 USD gives a converted amount of 92.00 EUR.
+      const shares = splitSide({
+        amountMinor: 9200n,
+        parties: [sharedParty(barack, 3333n), sharedParty(donald, 6667n)],
+        aliasMembers,
+      });
+      expect(shares).toEqual(
+        new Map([
+          [barack, 3066n],
+          [donald, 6134n],
+        ]),
+      );
+      expect(sumShares(shares)).toBe(9200n);
+    });
+
+    it("splits the share of an alias equally among its members", () => {
+      expect(
+        splitSide({
+          amountMinor: 10000n,
+          parties: [
+            { member_id: null, alias_id: obamas, share_minor: 7001n },
+            sharedParty(donald, 2999n),
+          ],
+          aliasMembers,
+        }),
+      ).toEqual(
+        new Map([
+          [barack, 3501n],
+          [donald, 2999n],
+          [michelle, 3500n],
+        ]),
+      );
+    });
+
+    it("gives the units that are left to the largest rests", () => {
+      // 100 × 1/6 = 16.67, 100 × 2/6 = 33.33, 100 × 3/6 = 50.
+      const shares = splitSide({
+        amountMinor: 100n,
+        parties: [
+          sharedParty(barack, 1n),
+          sharedParty(donald, 2n),
+          sharedParty(melania, 3n),
+        ],
+        aliasMembers,
+      });
+      expect(shares).toEqual(
+        new Map([
+          [barack, 17n],
+          [donald, 33n],
+          [melania, 50n],
+        ]),
+      );
+    });
+
+    it("refuses a side that mixes custom shares and equal parts", () => {
+      expect(() =>
+        splitSide({
+          amountMinor: 100n,
+          parties: [sharedParty(barack, 50n), memberParty(donald)],
+          aliasMembers,
+        }),
+      ).toThrow("A side needs a share for each party or for no party");
+    });
+
+    it("refuses a share of zero", () => {
+      expect(() =>
+        splitSide({
+          amountMinor: 100n,
+          parties: [sharedParty(barack, 0n), sharedParty(donald, 100n)],
+          aliasMembers,
+        }),
+      ).toThrow("A share must be larger than zero");
+    });
+  });
 });

@@ -5,6 +5,19 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
 /**
+ * Writes a party for the jsonb body of `save_transaction`. PostgREST takes a
+ * `bigint` as a JSON number. The schema keeps each share at or below the
+ * amount, thus below Number.MAX_SAFE_INTEGER.
+ */
+const toPartyBody = ({
+  share_minor: shareMinor,
+  ...reference
+}: z.output<typeof transactionFormSchema>["paid_by"][number]) =>
+  shareMinor === null
+    ? reference
+    : { ...reference, share_minor: Number(shareMinor) };
+
+/**
  * Adds a transaction, or changes a transaction and replaces its parties, in
  * one database transaction (PLAN.md, D9). Give `null` as `transactionId` for
  * a new transaction. Returns the ID of the transaction.
@@ -35,8 +48,8 @@ export const saveTransactionServerFn = createServerFn({ method: "POST" })
         p_amount_minor: Number(values.amount_minor),
         p_currency: values.currency,
         p_transaction_date: values.transaction_date.toString(),
-        p_paid_by: values.paid_by,
-        p_paid_for: values.paid_for,
+        p_paid_by: values.paid_by.map(toPartyBody),
+        p_paid_for: values.paid_for.map(toPartyBody),
       },
     );
     if (error || !transactionId) {

@@ -30,7 +30,7 @@ export const getSpaceServerFn = createServerFn({ method: "GET" })
         aliases(id, name, alias_members(member_id)),
         space_currencies(currency, rate::text, is_default),
         transactions(id, title, description, amount_minor, currency, transaction_date, created_at,
-          transaction_parties(side, member_id, alias_id))`,
+          transaction_parties(side, member_id, alias_id, share_minor))`,
       )
       .eq("id", data.spaceId)
       .maybeSingle();
@@ -107,7 +107,13 @@ export const getSpaceServerFn = createServerFn({ method: "GET" })
             defaultCurrency,
           }),
           transaction_date: transaction.transaction_date,
-          parties: transaction.transaction_parties,
+          parties: transaction.transaction_parties.map((party) => ({
+            side: party.side,
+            member_id: party.member_id,
+            alias_id: party.alias_id,
+            share_minor:
+              party.share_minor === null ? null : BigInt(party.share_minor),
+          })),
         };
       });
 

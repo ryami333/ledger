@@ -46,7 +46,7 @@ grant insert ("space_id", "title", "description", "amount_minor", "currency", "t
 grant update ("title", "description", "amount_minor", "currency", "transaction_date") on "public"."transactions" to authenticated;
 grant delete on "public"."transactions" to authenticated;
 
-grant insert ("transaction_id", "space_id", "side", "member_id", "alias_id") on "public"."transaction_parties" to authenticated;
+grant insert ("transaction_id", "space_id", "side", "member_id", "alias_id", "share_minor") on "public"."transaction_parties" to authenticated;
 grant delete on "public"."transaction_parties" to authenticated;
 
 -- better-auth owns the schema better_auth. No PostgREST role reads it. The

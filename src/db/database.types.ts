@@ -205,6 +205,7 @@ export type Database = {
           created_at: string;
           id: string;
           member_id: string | null;
+          share_minor: number | null;
           side: Database["public"]["Enums"]["transaction_side"];
           space_id: string;
           transaction_id: string;
@@ -216,6 +217,7 @@ export type Database = {
           created_at?: string;
           id?: string;
           member_id?: string | null;
+          share_minor?: number | null;
           side: Database["public"]["Enums"]["transaction_side"];
           space_id: string;
           transaction_id: string;
@@ -226,6 +228,7 @@ export type Database = {
           created_at?: string;
           id?: string;
           member_id?: string | null;
+          share_minor?: number | null;
           side?: Database["public"]["Enums"]["transaction_side"];
           space_id?: string;
           transaction_id?: string;

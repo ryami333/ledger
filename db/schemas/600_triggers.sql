@@ -43,6 +43,7 @@ CREATE CONSTRAINT TRIGGER "space_currencies_check_default" AFTER INSERT OR DELET
 CREATE CONSTRAINT TRIGGER "aliases_check_members" AFTER INSERT ON "public"."aliases" DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION "public"."check_alias_members"();
 CREATE CONSTRAINT TRIGGER "alias_members_check_members" AFTER DELETE OR UPDATE ON "public"."alias_members" DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION "public"."check_alias_members"();
 
--- Each side of a transaction has one or more parties.
-CREATE CONSTRAINT TRIGGER "transactions_check_sides" AFTER INSERT ON "public"."transactions" DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION "public"."check_transaction_sides"();
-CREATE CONSTRAINT TRIGGER "transaction_parties_check_sides" AFTER DELETE OR UPDATE ON "public"."transaction_parties" DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION "public"."check_transaction_sides"();
+-- Each side of a transaction has one or more parties, and its shares sum to
+-- the amount (PLAN.md, D6).
+CREATE CONSTRAINT TRIGGER "transactions_check_sides" AFTER INSERT OR UPDATE ON "public"."transactions" DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION "public"."check_transaction_sides"();
+CREATE CONSTRAINT TRIGGER "transaction_parties_check_sides" AFTER INSERT OR DELETE OR UPDATE ON "public"."transaction_parties" DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION "public"."check_transaction_sides"();

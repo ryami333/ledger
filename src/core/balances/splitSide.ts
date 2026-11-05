@@ -1,10 +1,16 @@
 /** The two sides of a transaction: the payers and the parties that the payment is for. */
 export type TransactionSide = "paid_by" | "paid_for";
 
-/** One party of a side: a member or an alias, as in `transaction_parties`. */
+/**
+ * One party of a side: a member or an alias, as in `transaction_parties`.
+ * `share_minor` is the custom share of the party, in minor units of the
+ * transaction currency (PLAN.md, D6). It is `null` or absent for an equal
+ * split.
+ */
 export type PartyRow = {
   member_id: string | null;
   alias_id: string | null;
+  share_minor?: bigint | null;
 };
 
 /** One row of `alias_members`. */
@@ -28,31 +34,91 @@ export const getPartyId = (party: PartyRow): string => {
 };
 
 /**
- * Splits an amount in equal parts, one for each recipient (PLAN.md, D6, rule
- * 4). Each recipient gets `floor(amount / count)`. The first
- * `amount % count` recipients, sorted by ID, get one more minor unit.
+ * Splits an amount in parts in proportion to the weight of each recipient
+ * (PLAN.md, D6, rule 4). Each recipient gets
+ * `floor(amount × weight / total weight)`. The minor units that are left go
+ * one each to the recipients with the largest rest of that division. On a
+ * tie, the first recipient by ID gets the unit. Thus equal weights give
+ * `floor(amount / count)`, and the first `amount % count` recipients by ID
+ * get one more minor unit.
  */
-const splitEqually = ({
+const splitByWeight = ({
   amountMinor,
-  recipientIds,
+  recipients,
 }: {
   amountMinor: bigint;
-  recipientIds: readonly string[];
+  recipients: readonly { recipientId: string; weight: bigint }[];
 }): { recipientId: string; amountMinor: bigint }[] => {
-  const count = BigInt(recipientIds.length);
-  const part = amountMinor / count;
-  const remainder = amountMinor % count;
-  return recipientIds.toSorted().map((recipientId, recipientIndex) => ({
-    recipientId,
-    amountMinor: BigInt(recipientIndex) < remainder ? part + 1n : part,
+  const totalWeight = recipients.reduce(
+    (accumulator, recipient) => accumulator + recipient.weight,
+    0n,
+  );
+  if (totalWeight <= 0n) {
+    throw new Error("splitByWeight needs a total weight larger than zero");
+  }
+  const parts = recipients
+    // The code unit order, the same as the sort of the result of splitSide.
+    .toSorted((first, second) => {
+      if (first.recipientId === second.recipientId) return 0;
+      return first.recipientId < second.recipientId ? -1 : 1;
+    })
+    .map((recipient) => ({
+      recipientId: recipient.recipientId,
+      amountMinor: (amountMinor * recipient.weight) / totalWeight,
+      rest: (amountMinor * recipient.weight) % totalWeight,
+    }));
+  const leftover =
+    amountMinor -
+    parts.reduce((accumulator, part) => accumulator + part.amountMinor, 0n);
+  const extraUnitIds = new Set(
+    // The sort is stable, thus a tie keeps the order by ID.
+    parts
+      .toSorted((first, second) => {
+        if (first.rest === second.rest) return 0;
+        return first.rest > second.rest ? -1 : 1;
+      })
+      .slice(0, Number(leftover))
+      .map((part) => part.recipientId),
+  );
+  return parts.map((part) => ({
+    recipientId: part.recipientId,
+    amountMinor: extraUnitIds.has(part.recipientId)
+      ? part.amountMinor + 1n
+      : part.amountMinor,
   }));
+};
+
+/**
+ * Gives the weight of each party of a side. With no custom shares, each party
+ * has the weight 1. With custom shares, the weight is the share. A side
+ * cannot mix the two.
+ */
+const getPartyWeights = (
+  parties: readonly PartyRow[],
+): { recipientId: string; weight: bigint }[] => {
+  const customCount = parties.filter(
+    (party) => party.share_minor !== undefined && party.share_minor !== null,
+  ).length;
+  if (customCount !== 0 && customCount !== parties.length) {
+    throw new Error("A side needs a share for each party or for no party");
+  }
+  return parties.map((party) => {
+    const weight = party.share_minor ?? 1n;
+    if (weight <= 0n) {
+      throw new Error("A share must be larger than zero");
+    }
+    return { recipientId: getPartyId(party), weight };
+  });
 };
 
 /**
  * Splits the converted amount of one side into the share of each member
  * (PLAN.md, D6):
  *
- * 1. Each party of the side gets an equal part. An alias is one party.
+ * 1. Each party of the side gets an equal part. An alias is one party. When
+ *    the parties have custom shares, each party gets a part in proportion to
+ *    its share. The shares are in the transaction currency and the amount is
+ *    the converted amount, thus the parts can differ from the shares.
  * 2. A member party keeps its part. An alias party splits its part in equal
  *    shares among the members of the alias.
  * 3. A member on the side two times, directly and through an alias, gets
@@ -90,9 +156,9 @@ export const splitSide = ({
     shares.set(memberId, (shares.get(memberId) ?? 0n) + shareMinor);
   };
 
-  const parts = splitEqually({
+  const parts = splitByWeight({
     amountMinor,
-    recipientIds: parties.map(getPartyId),
+    recipients: getPartyWeights(parties),
   });
   for (const part of parts) {
     const party = partiesById.get(part.recipientId);
@@ -107,9 +173,12 @@ export const splitSide = ({
     if (memberIds.length === 0) {
       throw new Error(`The alias ${aliasId} has no members`);
     }
-    for (const memberShare of splitEqually({
+    for (const memberShare of splitByWeight({
       amountMinor: part.amountMinor,
-      recipientIds: memberIds,
+      recipients: memberIds.map((memberId) => ({
+        recipientId: memberId,
+        weight: 1n,
+      })),
     })) {
       addShare({
         memberId: memberShare.recipientId,

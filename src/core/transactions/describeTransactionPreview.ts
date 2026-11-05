@@ -9,6 +9,9 @@ const MAX_LISTED_MEMBERS = 3;
  * Writes the sentence of one side, for example "Barack and Donald each paid
  * €50.00." Each party gets an equal part (PLAN.md, D6). When the parts are
  * not all equal, the sentence gives the smallest part and the largest part.
+ *
+ * When the parties have custom shares, the sentence gives the share of each
+ * party, for example "Barack paid €40.00 and Michelle paid €60.00."
  */
 const describeSide = ({
   amountMinor,
@@ -27,17 +30,32 @@ const describeSide = ({
   aliases: readonly NamedRow[];
   verb: "paid" | "got";
 }): string => {
-  const count = BigInt(parties.length);
-  const smallPart = amountMinor / count;
   const format = (partMinor: bigint) =>
     formatAmount({ amountMinor: partMinor, currency, locale });
+  const listFormat = new Intl.ListFormat(locale, { type: "conjunction" });
+  const names = parties.map((party) =>
+    getPartyName({ party, members, aliases }),
+  );
+
+  const customShares = parties.flatMap((party) =>
+    party.share_minor === undefined || party.share_minor === null
+      ? []
+      : [party.share_minor],
+  );
+  if (customShares.length === parties.length) {
+    const clauses = names.map(
+      (name, partyIndex) =>
+        `${name} ${verb} ${format(customShares[partyIndex] ?? 0n)}`,
+    );
+    return `${listFormat.format(clauses)}.`;
+  }
+
+  const count = BigInt(parties.length);
+  const smallPart = amountMinor / count;
   const part =
     amountMinor % count === 0n
       ? format(smallPart)
       : `${format(smallPart)} or ${format(smallPart + 1n)}`;
-  const names = parties.map((party) =>
-    getPartyName({ party, members, aliases }),
-  );
 
   if (names.length === 1) {
     return `${names[0]} ${verb} ${part}.`;
@@ -46,7 +64,6 @@ const describeSide = ({
   if (isOnlyMembers && names.length > MAX_LISTED_MEMBERS) {
     return `Each of ${names.length} members ${verb} ${part}.`;
   }
-  const listFormat = new Intl.ListFormat(locale, { type: "conjunction" });
   return `${listFormat.format(names)} each ${verb} ${part}.`;
 };
 

@@ -8,7 +8,7 @@ begin;
 \ir helpers.psql
 \ir fixtures.psql
 
-select plan(20);
+select plan(27);
 
 select tests.authenticate_as('00000000-0000-0000-0000-00000000000a');
 
@@ -183,6 +183,84 @@ select throws_ok(
   '23514',
   null,
   'delete.transaction_parties: a direct write that leaves an empty side is refused'
+);
+
+-- Custom shares (PLAN.md, D6)
+
+select lives_ok(
+  $$ select tests.run_with_deferred_checks($q$
+       select public.save_transaction(null, '10000000-0000-0000-0000-00000000000a',
+         'Split lunch', null, 1000, 'EUR', '2026-11-03',
+         '[{"member_id": "20000000-0000-0000-0000-0000000000a1"}]',
+         '[{"member_id": "20000000-0000-0000-0000-0000000000a1", "share_minor": 400},
+           {"alias_id": "30000000-0000-0000-0000-00000000000a", "share_minor": 600}]')
+     $q$) $$,
+  'save_transaction: custom shares that sum to the amount are allowed'
+);
+
+select results_eq(
+  $$ select side::text, share_minor from public.transaction_parties
+     join public.transactions on transactions.id = transaction_parties.transaction_id
+     where transactions.title = 'Split lunch'
+     order by side, share_minor nulls first $$,
+  $$ values ('paid_by', null::bigint), ('paid_for', 400::bigint), ('paid_for', 600::bigint) $$,
+  'save_transaction: stores the share of each party'
+);
+
+select throws_ok(
+  $$ select tests.run_with_deferred_checks($q$
+       select public.save_transaction(null, '10000000-0000-0000-0000-00000000000a',
+         'Lunch', null, 1000, 'EUR', '2026-11-03',
+         '[{"member_id": "20000000-0000-0000-0000-0000000000a1"}]',
+         '[{"member_id": "20000000-0000-0000-0000-0000000000a1", "share_minor": 400},
+           {"member_id": "20000000-0000-0000-0000-0000000000a2", "share_minor": 500}]')
+     $q$) $$,
+  '23514',
+  null,
+  'save_transaction: shares that do not sum to the amount are refused'
+);
+
+select throws_ok(
+  $$ select tests.run_with_deferred_checks($q$
+       select public.save_transaction(null, '10000000-0000-0000-0000-00000000000a',
+         'Lunch', null, 1000, 'EUR', '2026-11-03',
+         '[{"member_id": "20000000-0000-0000-0000-0000000000a1"}]',
+         '[{"member_id": "20000000-0000-0000-0000-0000000000a1", "share_minor": 1000},
+           {"member_id": "20000000-0000-0000-0000-0000000000a2"}]')
+     $q$) $$,
+  '23514',
+  null,
+  'save_transaction: a side with a share on some parties only is refused'
+);
+
+select throws_ok(
+  $$ select tests.run_with_deferred_checks($q$
+       select public.save_transaction(null, '10000000-0000-0000-0000-00000000000a',
+         'Lunch', null, 1000, 'EUR', '2026-11-03',
+         '[{"member_id": "20000000-0000-0000-0000-0000000000a1"}]',
+         '[{"member_id": "20000000-0000-0000-0000-0000000000a1", "share_minor": 1000},
+           {"member_id": "20000000-0000-0000-0000-0000000000a2", "share_minor": 0}]')
+     $q$) $$,
+  '23514',
+  null,
+  'save_transaction: a share of zero is refused'
+);
+
+select throws_ok(
+  $$ select tests.run_with_deferred_checks($q$
+       update public.transactions set amount_minor = 2000 where title = 'Split lunch'
+     $q$) $$,
+  '23514',
+  null,
+  'update.transactions: a new amount that does not agree with the shares is refused'
+);
+
+select lives_ok(
+  $$ select tests.run_with_deferred_checks($q$
+       update public.transactions set amount_minor = 5000
+       where id = '40000000-0000-0000-0000-00000000000a'
+     $q$) $$,
+  'update.transactions: a new amount of a transaction with equal parts is allowed'
 );
 
 select throws_ok(

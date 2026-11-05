@@ -191,8 +191,10 @@ end;
 $$;
 
 -- Makes sure that each side of the transaction of the row has one or more
--- parties. The deferred constraint triggers call it at the end of the database
--- transaction. Thus save_transaction can replace the parties.
+-- parties. On each side, each party has a share or no party has a share, and
+-- the shares sum to the amount of the transaction (PLAN.md, D6). The deferred
+-- constraint triggers call it at the end of the database transaction. Thus
+-- save_transaction can replace the parties.
 CREATE OR REPLACE FUNCTION "public"."check_transaction_sides"() RETURNS "trigger"
     LANGUAGE "plpgsql"
     SET "search_path" TO ''
@@ -221,6 +223,22 @@ begin
     where transaction_parties.transaction_id = v_transaction_id
   ) <> 2 then
     raise exception 'The transaction % must have one or more parties on each side', v_transaction_id
+      using errcode = '23514';
+  end if;
+
+  if exists (
+    select
+    from public.transaction_parties
+    join public.transactions on transactions.id = transaction_parties.transaction_id
+    where transaction_parties.transaction_id = v_transaction_id
+    group by transaction_parties.side, transactions.amount_minor
+    having count(transaction_parties.share_minor) not in (0, count(*))
+      or (
+        count(transaction_parties.share_minor) > 0
+        and sum(transaction_parties.share_minor) <> transactions.amount_minor
+      )
+  ) then
+    raise exception 'The shares of each side of the transaction % must be on all parties or on none, and sum to the amount', v_transaction_id
       using errcode = '23514';
   end if;
 
@@ -362,8 +380,9 @@ $$;
 
 -- Inserts or updates a transaction, and replaces its parties (PLAN.md, D9).
 -- Give null as p_transaction_id for a new transaction. p_paid_by and
--- p_paid_for are jsonb arrays of { "member_id": ... } or { "alias_id": ... }.
--- Returns the ID of the transaction.
+-- p_paid_for are jsonb arrays of { "member_id": ... } or { "alias_id": ... },
+-- each with an optional "share_minor" (PLAN.md, D6). Returns the ID of the
+-- transaction.
 --
 -- It refuses an empty side, and an archived member in a new transaction. The
 -- composite foreign keys refuse a party of a different space and a currency
@@ -418,13 +437,14 @@ begin
     where transaction_parties.transaction_id = v_transaction_id;
   end if;
 
-  insert into public.transaction_parties (transaction_id, space_id, side, member_id, alias_id)
+  insert into public.transaction_parties (transaction_id, space_id, side, member_id, alias_id, share_minor)
   select
     v_transaction_id,
     p_space_id,
     parties.side,
     (parties.item ->> 'member_id')::uuid,
-    (parties.item ->> 'alias_id')::uuid
+    (parties.item ->> 'alias_id')::uuid,
+    (parties.item ->> 'share_minor')::bigint
   from (
     select 'paid_by'::public.transaction_side as side, item
     from pg_catalog.jsonb_array_elements(p_paid_by) as item

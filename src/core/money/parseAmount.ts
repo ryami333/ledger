@@ -1,7 +1,5 @@
 import { getCurrencyDecimals } from "./getCurrencyDecimals.ts";
-
-/** Digits, then an optional decimal point and more digits. */
-const amountPattern = /^(\d*)(?:\.(\d*))?$/;
+import { parseDecimalText } from "./parseDecimalText.ts";
 
 /**
  * Converts the text of an amount input to minor units, with string
@@ -18,19 +16,5 @@ export const parseAmount = ({
 }: {
   text: string;
   currency: string;
-}): bigint | null => {
-  const match = amountPattern.exec(text.trim());
-  if (!match) {
-    return null;
-  }
-  const wholePart = match[1] ?? "";
-  const fractionPart = match[2] ?? "";
-  if (wholePart === "" && fractionPart === "") {
-    return null;
-  }
-  const decimals = getCurrencyDecimals(currency);
-  if (fractionPart.length > decimals) {
-    return null;
-  }
-  return BigInt(`${wholePart || "0"}${fractionPart.padEnd(decimals, "0")}`);
-};
+}): bigint | null =>
+  parseDecimalText({ text, decimals: getCurrencyDecimals(currency) });

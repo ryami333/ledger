@@ -36,11 +36,16 @@ export type SpaceCurrency = {
   is_default: boolean;
 };
 
-/** One party of a transaction on the space page. */
+/**
+ * One party of a transaction on the space page. `share_minor` is the custom
+ * share in minor units of the transaction currency, or `null` for an equal
+ * split (PLAN.md, D6).
+ */
 export type SpaceTransactionParty = {
   side: TransactionSide;
   member_id: string | null;
   alias_id: string | null;
+  share_minor: bigint | null;
 };
 
 /**

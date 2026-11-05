@@ -3,7 +3,13 @@ import { transactionFormSchema } from "../../../core/forms/transactionFormSchema
 import { formatAmountInput } from "../../../core/money/formatAmountInput.ts";
 import { getCurrencyDecimals } from "../../../core/money/getCurrencyDecimals.ts";
 import { parseAmount } from "../../../core/money/parseAmount.ts";
+import {
+  type CustomSplit,
+  customSplitFromShares,
+  resolveCustomSplit,
+} from "../../../core/splits/customSplitHelpers.ts";
 import { describeTransactionPreview } from "../../../core/transactions/describeTransactionPreview.ts";
+import { getPartyName } from "../../../core/transactions/getPartyName.ts";
 import {
   parsePartyValue,
   toPartyRow,
@@ -11,6 +17,7 @@ import {
 } from "../../../core/transactions/partyValueHelpers.ts";
 import { saveTransactionServerFn } from "../../../serverFunctions/saveTransactionServerFn.ts";
 import { Drawer } from "../../ui/Drawer.tsx";
+import { CustomSplitModal } from "./CustomSplitModal.tsx";
 import type {
   SpaceAlias,
   SpaceCurrency,
@@ -32,6 +39,7 @@ import {
 } from "@mantine/core";
 import { DateInput } from "@mantine/dates";
 import { useRouter } from "@tanstack/react-router";
+import { useState } from "react";
 import { Controller, useForm, useWatch } from "react-hook-form";
 import { type z } from "zod";
 import classNames from "classnames/bind";
@@ -41,6 +49,13 @@ const cx = classNames.bind(styles);
 
 type TransactionFormInput = z.input<typeof transactionFormSchema>;
 type TransactionFormOutput = z.output<typeof transactionFormSchema>;
+
+type SplitSide = "paid_by" | "paid_for";
+
+const SIDE_LABELS: Record<SplitSide, string> = {
+  paid_by: "Paid by",
+  paid_for: "Paid for",
+};
 
 /** Converts the values of a party picker to party rows for the preview. */
 const toPartyRows = (values: readonly string[]) =>
@@ -80,10 +95,23 @@ export function TransactionForm({
   transaction: SpaceTransaction | null;
 }) {
   const router = useRouter();
-  const partyValuesOfSide = (side: "paid_by" | "paid_for") =>
-    (transaction?.parties ?? [])
-      .filter((party) => party.side === side)
-      .map(toPartyValue);
+  const partiesOfSide = (side: SplitSide) =>
+    (transaction?.parties ?? []).filter((party) => party.side === side);
+  const partyValuesOfSide = (side: SplitSide) =>
+    partiesOfSide(side).map(toPartyValue);
+  // A saved custom split opens in the mode "amount", in the order of the
+  // parties. The last party gets the remainder.
+  const splitOfSide = (side: SplitSide): CustomSplit | null => {
+    if (!transaction) return null;
+    const shares = partiesOfSide(side).map((party) => party.share_minor);
+    if (shares.length < 2 || shares.some((share) => share === null)) {
+      return null;
+    }
+    return customSplitFromShares({
+      shares: shares.filter((share) => share !== null),
+      currency: transaction.currency,
+    });
+  };
   const form = useForm<TransactionFormInput, unknown, TransactionFormOutput>({
     resolver: zodResolver(transactionFormSchema),
     defaultValues: {
@@ -98,14 +126,43 @@ export function TransactionForm({
       currency: transaction?.currency ?? spaceCurrencies[0]?.currency ?? "",
       transaction_date: transaction?.transaction_date ?? defaultTransactionDate,
       paid_by: partyValuesOfSide("paid_by"),
+      paid_by_split: splitOfSide("paid_by"),
       paid_for: partyValuesOfSide("paid_for"),
+      paid_for_split: splitOfSide("paid_for"),
     },
   });
   const { errors, isSubmitting, isSubmitted } = form.formState;
-  const [amount, currency, paidBy, paidFor] = useWatch({
-    control: form.control,
-    name: ["amount", "currency", "paid_by", "paid_for"],
-  });
+  const [amount, currency, paidBy, paidBySplit, paidFor, paidForSplit] =
+    useWatch({
+      control: form.control,
+      name: [
+        "amount",
+        "currency",
+        "paid_by",
+        "paid_by_split",
+        "paid_for",
+        "paid_for_split",
+      ],
+    });
+  const sides = {
+    paid_by: { values: paidBy, split: paidBySplit ?? null },
+    paid_for: { values: paidFor, split: paidForSplit ?? null },
+  };
+
+  // The custom split modal keeps its side after the close, so that it keeps
+  // its text while it fades out.
+  const [splitModal, setSplitModal] = useState<{
+    side: SplitSide;
+    isOpen: boolean;
+    formKey: number;
+  }>({ side: "paid_by", isOpen: false, formKey: 0 });
+
+  const amountMinor = (() => {
+    if (!isSupportedCurrency(currency)) return null;
+    const parsedAmount = parseAmount({ text: String(amount), currency });
+    if (parsedAmount === null || parsedAmount <= 0n) return null;
+    return parsedAmount;
+  })();
 
   const transactionMemberIds = new Set(
     (transaction?.parties ?? []).flatMap((party) =>
@@ -135,29 +192,123 @@ export function TransactionForm({
     },
   ].filter((group) => group.items.length > 0);
 
+  /**
+   * Gives the party rows of a side for the preview, with the custom shares.
+   * It returns `null` when the custom split is not valid.
+   */
+  const previewRowsOfSide = ({
+    side,
+    validAmountMinor,
+  }: {
+    side: SplitSide;
+    validAmountMinor: bigint;
+  }) => {
+    const rows = toPartyRows(sides[side].values);
+    const split = sides[side].split;
+    if (split === null) return rows;
+    const result = resolveCustomSplit({
+      split,
+      amountMinor: validAmountMinor,
+      currency,
+      partyCount: rows.length,
+    });
+    if ("error" in result) return null;
+    return rows.map((row, rowIndex) => ({
+      ...row,
+      share_minor: result.shares[rowIndex] ?? null,
+    }));
+  };
+
   const preview = (() => {
-    if (!isSupportedCurrency(currency)) return null;
-    const amountMinor = parseAmount({ text: String(amount), currency });
     if (amountMinor === null) return null;
+    const paidByRows = previewRowsOfSide({
+      side: "paid_by",
+      validAmountMinor: amountMinor,
+    });
+    const paidForRows = previewRowsOfSide({
+      side: "paid_for",
+      validAmountMinor: amountMinor,
+    });
+    if (paidByRows === null || paidForRows === null) return null;
     return describeTransactionPreview({
       amountMinor,
       currency,
       locale,
-      paidBy: toPartyRows(paidBy),
-      paidFor: toPartyRows(paidFor),
+      paidBy: paidByRows,
+      paidFor: paidForRows,
       members,
       aliases,
     });
   })();
 
+  const partyNamesOfSide = (side: SplitSide) =>
+    toPartyRows(sides[side].values).map((party) =>
+      getPartyName({ party, members, aliases }),
+    );
+
+  const setSplit = ({
+    side,
+    split,
+  }: {
+    side: SplitSide;
+    split: CustomSplit | null;
+  }) =>
+    form.setValue(`${side}_split`, split, {
+      shouldDirty: true,
+      shouldValidate: isSubmitted,
+    });
+
+  // A change of the parties of a side gives the side an equal split again.
+  // The values of a custom split belong to the old parties.
+  const changeParties = ({
+    side,
+    values,
+    onChange,
+  }: {
+    side: SplitSide;
+    values: string[];
+    onChange: (values: string[]) => void;
+  }) => {
+    onChange(values);
+    if (sides[side].split !== null) setSplit({ side, split: null });
+  };
+
+  const openSplitModal = (side: SplitSide) =>
+    setSplitModal((prev) => ({
+      side,
+      isOpen: true,
+      formKey: prev.formKey + 1,
+    }));
+  const closeSplitModal = () =>
+    setSplitModal((prev) => ({ ...prev, isOpen: false }));
+
+  /** The button that opens the custom split modal of a side. */
+  const renderSplitButton = (side: SplitSide) => {
+    const isCustom = sides[side].split !== null;
+    return (
+      <Button
+        variant={isCustom ? "light" : "subtle"}
+        size="compact-sm"
+        disabled={amountMinor === null || sides[side].values.length < 2}
+        onClick={() => openSplitModal(side)}
+      >
+        Advanced split
+      </Button>
+    );
+  };
+
   const selectEveryone = () =>
-    form.setValue(
-      "paid_for",
-      activeMembers.map((member) =>
+    changeParties({
+      side: "paid_for",
+      values: activeMembers.map((member) =>
         toPartyValue({ member_id: member.id, alias_id: null }),
       ),
-      { shouldDirty: true, shouldValidate: isSubmitted },
-    );
+      onChange: (values) =>
+        form.setValue("paid_for", values, {
+          shouldDirty: true,
+          shouldValidate: isSubmitted,
+        }),
+    });
 
   // The schema output has a bigint and a Temporal.PlainDate, and the schema
   // does not accept its own output. Thus the server function gets the form
@@ -271,23 +422,34 @@ export function TransactionForm({
               />
             )}
           />
-          <Controller
-            control={form.control}
-            name="paid_by"
-            render={({ field }) => (
-              <MultiSelect
-                label="Paid by"
-                required
-                searchable
-                selectFirstOptionOnChange
-                data={partyOptions}
-                value={field.value}
-                onChange={field.onChange}
-                onBlur={field.onBlur}
-                error={errors.paid_by?.message}
-              />
-            )}
-          />
+          <Stack gap={4}>
+            <Controller
+              control={form.control}
+              name="paid_by"
+              render={({ field }) => (
+                <MultiSelect
+                  label="Paid by"
+                  required
+                  searchable
+                  selectFirstOptionOnChange
+                  data={partyOptions}
+                  value={field.value}
+                  onChange={(values) =>
+                    changeParties({
+                      side: "paid_by",
+                      values,
+                      onChange: field.onChange,
+                    })
+                  }
+                  onBlur={field.onBlur}
+                  error={
+                    errors.paid_by?.message ?? errors.paid_by_split?.message
+                  }
+                />
+              )}
+            />
+            <Group>{renderSplitButton("paid_by")}</Group>
+          </Stack>
           <Stack gap={4}>
             <Controller
               control={form.control}
@@ -300,13 +462,22 @@ export function TransactionForm({
                   selectFirstOptionOnChange
                   data={partyOptions}
                   value={field.value}
-                  onChange={field.onChange}
+                  onChange={(values) =>
+                    changeParties({
+                      side: "paid_for",
+                      values,
+                      onChange: field.onChange,
+                    })
+                  }
                   onBlur={field.onBlur}
-                  error={errors.paid_for?.message}
+                  error={
+                    errors.paid_for?.message ?? errors.paid_for_split?.message
+                  }
                 />
               )}
             />
-            <Group>
+            <Group gap="xs">
+              {renderSplitButton("paid_for")}
               <Button
                 variant="subtle"
                 size="compact-sm"
@@ -347,6 +518,23 @@ export function TransactionForm({
           Save transaction
         </Button>
       </Drawer.Footer>
+      {amountMinor !== null && (
+        <CustomSplitModal
+          isOpen={splitModal.isOpen}
+          onRequestClose={closeSplitModal}
+          onApply={(split) => {
+            setSplit({ side: splitModal.side, split });
+            closeSplitModal();
+          }}
+          formKey={splitModal.formKey}
+          sideLabel={SIDE_LABELS[splitModal.side]}
+          partyNames={partyNamesOfSide(splitModal.side)}
+          amountMinor={amountMinor}
+          currency={currency}
+          locale={locale}
+          split={sides[splitModal.side].split}
+        />
+      )}
     </form>
   );
 }

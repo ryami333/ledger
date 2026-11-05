@@ -1,4 +1,5 @@
 import { parseAmount } from "../money/parseAmount.ts";
+import { resolveCustomSplit } from "../splits/customSplitHelpers.ts";
 import {
   type PartyReference,
   parsePartyValue,
@@ -46,12 +47,26 @@ const partiesSchema = (emptyMessage: string) =>
     );
 
 /**
+ * The custom split of one side, or `null` for an equal split (PLAN.md, D6).
+ * See `CustomSplit` in `src/core/splits/customSplitHelpers.ts`.
+ */
+const customSplitSchema = z
+  .object({
+    mode: z.enum(["amount", "percent"]),
+    values: z.array(z.string()),
+  })
+  .nullable();
+
+/**
  * The transaction form (PLAN.md, UI). The output has the parameters of
  * `save_transaction`, with the amount in minor units and the date as a
  * `Temporal.PlainDate`.
  *
  * The amount input can give a text or a number. The schema converts a number
  * to its text, with no float arithmetic.
+ *
+ * Each party of the output has `share_minor`: its custom share in minor units
+ * of the transaction currency, or `null` for an equal split.
  */
 export const transactionFormSchema = z
   .object({
@@ -80,7 +95,9 @@ export const transactionFormSchema = z
         return z.NEVER;
       }),
     paid_by: partiesSchema("Select one or more payers."),
+    paid_by_split: customSplitSchema,
     paid_for: partiesSchema("Select who the payment is for."),
+    paid_for_split: customSplitSchema,
   })
   .transform((values, context) => {
     const amountMinor = parseAmount({
@@ -108,13 +125,57 @@ export const transactionFormSchema = z
       });
       return z.NEVER;
     }
+    const withShares = ({
+      parties,
+      split,
+      path,
+    }: {
+      parties: PartyReference[];
+      split: z.output<typeof customSplitSchema>;
+      path: "paid_by_split" | "paid_for_split";
+    }) => {
+      if (split === null) {
+        return parties.map((party) => ({ ...party, share_minor: null }));
+      }
+      const result = resolveCustomSplit({
+        split,
+        amountMinor,
+        currency: values.currency,
+        partyCount: parties.length,
+      });
+      if ("error" in result) {
+        context.addIssue({
+          code: "custom",
+          path: [path],
+          message: result.error,
+        });
+        return null;
+      }
+      return parties.map((party, partyIndex) => ({
+        ...party,
+        share_minor: result.shares[partyIndex] ?? null,
+      }));
+    };
+    const paidBy = withShares({
+      parties: values.paid_by,
+      split: values.paid_by_split,
+      path: "paid_by_split",
+    });
+    const paidFor = withShares({
+      parties: values.paid_for,
+      split: values.paid_for_split,
+      path: "paid_for_split",
+    });
+    if (paidBy === null || paidFor === null) {
+      return z.NEVER;
+    }
     return {
       title: values.title,
       description: values.description,
       amount_minor: amountMinor,
       currency: values.currency,
       transaction_date: values.transaction_date,
-      paid_by: values.paid_by,
-      paid_for: values.paid_for,
+      paid_by: paidBy,
+      paid_for: paidFor,
     };
   });

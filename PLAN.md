@@ -209,7 +209,25 @@ A member can be on both sides. This is normal: Barack pays dinner for all four.
 
 The "Everyone" button of Paid for adds each member that is not archived, as member parties.
 
-Custom shares (weights, percentages, exact amounts) go to the roadmap.
+A side can have a custom split in place of the equal split:
+
+- `transaction_parties.share_minor` holds the share of each party, in minor units of the
+  transaction currency. It is `null` for an equal split.
+- On one side, each party has a share, or no party has a share. The shares sum to
+  `amount_minor`. Each share is larger than zero. The deferred trigger
+  `check_transaction_sides` makes sure of this, also after a change of the amount.
+- Rule 1 then gives each party a part of the converted amount in proportion to its share.
+  The minor units that are left go to the largest rests of the division, then by `id`.
+  Equal weights give the result of rule 4. An alias party splits its part equally (rule 2).
+- The "Advanced split" button of a side opens a modal on top of the drawer
+  (`CustomSplitModal`, `Modal.Stack`). It has an input for each party except the last, in
+  percent or in the transaction currency, with a toggle. The last party gets the remainder.
+- A percent share rounds half away from zero to a whole minor unit
+  (`resolveCustomSplit` in `src/core/splits`). Thus the last party absorbs the rounding.
+- The database stores only the shares. A saved custom split opens again in the mode
+  "amount". A change of the parties of a side resets the side to the equal split.
+
+Weights (for example "2 shares for Barack") go to the roadmap.
 
 ### D7: Aliases
 
@@ -394,7 +412,8 @@ All pages use Mantine, inside one `AppShell` with the product name and a sign-ou
 - **Transaction drawer**: one form for a new and an existing transaction:
   - Title, Description, Amount (`NumberInput`, with the decimals of the currency), Currency
     (`Select` of the space currencies, the default currency first), Date (`DateInput`).
-  - Paid by, Paid for: one `MultiSelect` each, with the groups "Members" and "Aliases". Paid
+  - Paid by, Paid for: one `MultiSelect` each, with the groups "Members" and "Aliases", and
+    an "Advanced split" button each for a custom split (D6). Paid
     to has an "Everyone" button (D6).
   - A preview line under the form, from `src/core`: "Obamas' Shared Account and Donald
     each paid €50.00. Each of 4 members got €25.00."
@@ -766,7 +785,8 @@ Notes:
 
 - Settle up: calculate the smallest set of payments that brings each balance to zero. Add a
   "Settle up" button that fills the transaction drawer with one of these payments.
-- Custom splits: weights, percentages, and exact amounts for each member or alias.
+- Custom splits by weight, for example "2 shares for Barack" (D6 has percentages and exact
+  amounts). Keep the mode of a custom split, so it opens again in percent.
 - Fetch the rates from a public source (for example the ECB), as a suggestion in the
   currency form.
 - A change history of each transaction, with audit rows from database triggers, as in

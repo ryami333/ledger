@@ -17,7 +17,9 @@ const validInput: z.input<typeof transactionFormSchema> = {
   currency: "EUR",
   transaction_date: "2026-11-04",
   paid_by: [`alias:${obamas}`, `member:${donald}`],
+  paid_by_split: null,
   paid_for: [`member:${barack}`, `member:${donald}`],
+  paid_for_split: null,
 };
 
 const issuesOf = (input: z.input<typeof transactionFormSchema>) =>
@@ -34,9 +36,44 @@ describe("transactionFormSchema", () => {
       amount_minor: 10000n,
       currency: "EUR",
       transaction_date: Temporal.PlainDate.from("2026-11-04"),
-      paid_by: [{ alias_id: obamas }, { member_id: donald }],
-      paid_for: [{ member_id: barack }, { member_id: donald }],
+      paid_by: [
+        { alias_id: obamas, share_minor: null },
+        { member_id: donald, share_minor: null },
+      ],
+      paid_for: [
+        { member_id: barack, share_minor: null },
+        { member_id: donald, share_minor: null },
+      ],
     });
+  });
+
+  it("gives the custom shares of a side, with the remainder last", () => {
+    const output = transactionFormSchema.parse({
+      ...validInput,
+      paid_for_split: { mode: "percent", values: ["40"] },
+    });
+    expect(output.paid_for).toEqual([
+      { member_id: barack, share_minor: 4000n },
+      { member_id: donald, share_minor: 6000n },
+    ]);
+    expect(output.paid_by.map((party) => party.share_minor)).toEqual([
+      null,
+      null,
+    ]);
+  });
+
+  it("refuses a custom split with no remainder", () => {
+    expect(
+      issuesOf({
+        ...validInput,
+        paid_by_split: { mode: "amount", values: ["100"] },
+      }),
+    ).toEqual([
+      {
+        path: "paid_by_split",
+        message: "The shares must leave a remainder for the last party.",
+      },
+    ]);
   });
 
   it("reads the amount with the decimals of the currency", () => {

@@ -103,4 +103,20 @@ describe("describeTransactionPreview", () => {
     ).toBeNull();
     expect(preview({ amountMinor: 1000n, paidBy: [], paidFor: [] })).toBeNull();
   });
+
+  it("gives the share of each party of a custom split", () => {
+    expect(
+      preview({
+        amountMinor: 10000n,
+        paidBy: [{ ...member("barack"), share_minor: 10000n }],
+        paidFor: [
+          { ...member("barack"), share_minor: 4000n },
+          { ...alias("obamas"), share_minor: 2500n },
+          { ...member("donald"), share_minor: 3500n },
+        ],
+      }),
+    ).toBe(
+      "Barack paid €100.00. Barack got €40.00, Obamas' Shared Account got €25.00 and Donald got €35.00.",
+    );
+  });
 });

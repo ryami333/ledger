@@ -1,0 +1,36 @@
+/* The form holds the header, the inner area, and the footer of the modal.
+   It must not change the flex layout of the modal frame. */
+.form {
+  display: contents;
+}
+
+/* One grid for all rows, so that the inputs and the hints align. */
+.rows {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 9rem 6rem;
+  column-gap: var(--mantine-spacing-sm);
+  row-gap: var(--mantine-spacing-xs);
+  align-items: center;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: subgrid;
+  grid-column: 1 / -1;
+  align-items: center;
+}
+
+.name {
+  overflow-wrap: anywhere;
+}
+
+.remainder {
+  padding-inline: var(--mantine-spacing-sm);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.hint {
+  font-variant-numeric: tabular-nums;
+  text-align: end;
+}
