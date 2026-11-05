@@ -1,3 +1,11 @@
+/* A page change scrolls the heading into view, below the header of the
+   AppShell. */
+.heading {
+  scroll-margin-block-start: calc(
+    var(--app-shell-header-offset, 0rem) + var(--mantine-spacing-md)
+  );
+}
+
 .list {
   margin: 0;
   padding: 0;

@@ -60,7 +60,12 @@ export function TransactionList({
   return (
     <Stack gap="xs" component="section" aria-labelledby="transactions-title">
       <Group justify="space-between" align="baseline">
-        <Title order={2} size="h3" id="transactions-title">
+        <Title
+          order={2}
+          size="h3"
+          id="transactions-title"
+          className={cx("heading")}
+        >
           Transactions
         </Title>
         {totalCount > 0 && (
