@@ -15,20 +15,14 @@ export type BalanceMemberRow = {
 };
 
 /**
- * The columns of `space_currencies` that the balances use. Select the rate as
- * `rate::text` (PLAN.md, D5).
+ * The columns of `transactions` that the balances use. `rate` is the rate of
+ * the transaction, from its save. Select it as `rate::text` (PLAN.md, D5).
  */
-export type BalanceSpaceCurrencyRow = {
-  currency: string;
-  rate: string;
-  is_default: boolean;
-};
-
-/** The columns of `transactions` that the balances use. */
 export type BalanceTransactionRow = {
   id: string;
   amount_minor: bigint;
   currency: string;
+  rate: string;
 };
 
 /** The columns of `transaction_parties` that the balances use. */
@@ -77,7 +71,8 @@ const compareBalances = (first: MemberBalance, second: MemberBalance) => {
  * (PLAN.md, D10). A positive balance means "is owed".
  *
  * For each transaction, it converts the amount to the default currency
- * first (D5). Then it splits the converted amount on each side (D6). A paid
+ * first, with the rate of the transaction (D5). Then it splits the converted
+ * amount on each side (D6). A paid
  * share adds to the balance, and a received share subtracts from it. Thus
  * the balances of a space sum to zero.
  *
@@ -86,39 +81,22 @@ const compareBalances = (first: MemberBalance, second: MemberBalance) => {
  * members who are owed, then the members who owe, then the settled members.
  * In each group, the largest amount comes first, then the name.
  *
- * It throws when the rows do not agree, for example a transaction in a
- * currency that is not a space currency.
+ * It throws when the rows do not agree, for example a transaction with a
+ * rate that is not valid.
  */
 export const calculateBalances = ({
   members,
   aliasMembers,
-  spaceCurrencies,
+  defaultCurrency,
   transactions,
   parties,
 }: {
   members: readonly BalanceMemberRow[];
   aliasMembers: readonly AliasMemberRow[];
-  spaceCurrencies: readonly BalanceSpaceCurrencyRow[];
+  defaultCurrency: string;
   transactions: readonly BalanceTransactionRow[];
   parties: readonly BalancePartyRow[];
 }): MemberBalance[] => {
-  const defaultCurrencies = spaceCurrencies.filter(
-    (spaceCurrency) => spaceCurrency.is_default,
-  );
-  const defaultCurrency = defaultCurrencies[0]?.currency;
-  if (defaultCurrencies.length !== 1 || defaultCurrency === undefined) {
-    throw new Error("A space needs exactly one default currency");
-  }
-  const scaledRates = new Map(
-    spaceCurrencies.map((spaceCurrency) => {
-      const scaledRate = parseRate(spaceCurrency.rate);
-      if (scaledRate === null) {
-        throw new Error(`The rate of ${spaceCurrency.currency} is not valid`);
-      }
-      return [spaceCurrency.currency, scaledRate];
-    }),
-  );
-
   const balances = new Map(members.map((member) => [member.id, 0n]));
   const addToBalance = ({
     memberId,
@@ -139,10 +117,10 @@ export const calculateBalances = ({
     (party) => party.transaction_id,
   );
   for (const transaction of transactions) {
-    const scaledRate = scaledRates.get(transaction.currency);
-    if (scaledRate === undefined) {
+    const scaledRate = parseRate(transaction.rate);
+    if (scaledRate === null) {
       throw new Error(
-        `The currency ${transaction.currency} of the transaction ${transaction.id} is not a space currency`,
+        `The rate of the transaction ${transaction.id} is not valid`,
       );
     }
     const convertedAmount = convertAmount({

@@ -15,6 +15,7 @@ const validInput: z.input<typeof transactionFormSchema> = {
   description: "",
   amount: "100.00",
   currency: "EUR",
+  rate: "1",
   transaction_date: "2026-11-04",
   paid_by: [`alias:${obamas}`, `member:${donald}`],
   paid_by_split: null,
@@ -35,6 +36,7 @@ describe("transactionFormSchema", () => {
       description: null,
       amount_minor: 10000n,
       currency: "EUR",
+      rate: "1",
       transaction_date: Temporal.PlainDate.from("2026-11-04"),
       paid_by: [
         { alias_id: obamas, share_minor: null },
@@ -45,6 +47,27 @@ describe("transactionFormSchema", () => {
         { member_id: donald, share_minor: null },
       ],
     });
+  });
+
+  it("gives the rate as a text with no zeros at the end", () => {
+    expect(
+      transactionFormSchema.parse({
+        ...validInput,
+        currency: "USD",
+        rate: " 0.92000000 ",
+      }).rate,
+    ).toBe("0.92");
+  });
+
+  it("refuses a rate that is not valid", () => {
+    for (const rate of ["", "0", "-1", "0.123456789", "abc"]) {
+      expect(issuesOf({ ...validInput, rate })).toEqual([
+        {
+          path: "rate",
+          message: "Enter a rate larger than zero, with 8 decimals or fewer.",
+        },
+      ]);
+    }
   });
 
   it("gives the custom shares of a side, with the remainder last", () => {

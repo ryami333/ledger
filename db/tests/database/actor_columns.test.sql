@@ -69,7 +69,7 @@ select is(
 select lives_ok(
   $$ select public.save_transaction(
        '40000000-0000-0000-0000-00000000000a', '10000000-0000-0000-0000-00000000000a',
-       'Dinner', null, 5000, 'USD', '2026-11-01',
+       'Dinner', null, 5000, 'USD', null, '2026-11-01',
        '[{"alias_id": "30000000-0000-0000-0000-00000000000a"}]',
        '[{"member_id": "20000000-0000-0000-0000-0000000000a1"}]') $$,
   'save_transaction: user B changes the transaction'

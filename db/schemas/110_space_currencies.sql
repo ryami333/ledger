@@ -4,6 +4,8 @@
 -- (600_triggers.sql) makes sure that each space has one.
 --
 -- A rate is the value of one unit of the currency in the default currency.
+-- A new transaction copies the rate of its currency (150_transactions.sql).
+-- Thus a change of a rate changes only the transactions after the change.
 -- Select it as text (rate::text), because a JSON number can lose digits.
 CREATE TABLE IF NOT EXISTS "public"."space_currencies" (
     "space_id" "uuid" NOT NULL,

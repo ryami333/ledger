@@ -5,6 +5,11 @@
 -- transactions_check_sides (600_triggers.sql) makes sure of this.
 --
 -- amount_minor is the amount in minor units of the currency (PLAN.md, D4).
+-- rate is the value of one unit of the currency in the default currency, at
+-- the save of the transaction (PLAN.md, D5). A later change of the space
+-- currency does not change it. A transaction in the default currency has the
+-- rate 1. Select it as text (rate::text), because a JSON number can lose
+-- digits.
 -- transaction_date is a date with no time and no time zone (PLAN.md, D11).
 CREATE TABLE IF NOT EXISTS "public"."transactions" (
     "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
@@ -13,6 +18,7 @@ CREATE TABLE IF NOT EXISTS "public"."transactions" (
     "description" "text",
     "amount_minor" bigint NOT NULL,
     "currency" "text" NOT NULL,
+    "rate" numeric(18, 8) NOT NULL,
     "transaction_date" "date" NOT NULL,
     "created_by" "uuid",
     "updated_by" "uuid",
@@ -23,6 +29,7 @@ CREATE TABLE IF NOT EXISTS "public"."transactions" (
     CONSTRAINT "transactions_space_id_id_key" UNIQUE ("space_id", "id"),
     CONSTRAINT "transactions_title_check" CHECK ("btrim"("title") <> ''),
     CONSTRAINT "transactions_amount_minor_check" CHECK ("amount_minor" > 0),
+    CONSTRAINT "transactions_rate_check" CHECK ("rate" > 0),
     CONSTRAINT "transactions_space_id_fkey" FOREIGN KEY ("space_id") REFERENCES "public"."spaces"("id") ON DELETE CASCADE,
     -- A transaction uses only a currency of its space. A space currency in use
     -- cannot be removed (PLAN.md, D5). With no ON DELETE action, Postgres

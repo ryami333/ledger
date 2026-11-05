@@ -33,7 +33,7 @@ select ok(
   has_function_privilege('authenticated', 'public.create_space(text, text, text, text[])', 'execute')
   and has_function_privilege('authenticated', 'public.save_space_currencies(uuid, jsonb)', 'execute')
   and has_function_privilege('authenticated', 'public.save_alias(uuid, uuid, text, uuid[])', 'execute')
-  and has_function_privilege('authenticated', 'public.save_transaction(uuid, uuid, text, text, bigint, text, date, jsonb, jsonb)', 'execute')
+  and has_function_privilege('authenticated', 'public.save_transaction(uuid, uuid, text, text, bigint, text, text, date, jsonb, jsonb)', 'execute')
   and has_function_privilege('authenticated', 'public.import_transactions(uuid, jsonb, jsonb)', 'execute')
   and has_function_privilege('authenticated', 'public.current_user_id()', 'execute'),
   'authenticated has EXECUTE on the functions of PLAN.md, D9, and on current_user_id'

@@ -42,11 +42,14 @@ Phase 0 copies this glossary into `AGENTS.md`.
   space can use, with its rate.
 - **Default currency:** The one space currency with `is_default`. The transaction form
   selects it first. The balances use it.
-- **Rate:** The value of one unit of a space currency in the default currency. Example: with
+- **Rate:** The value of one unit of a currency in the default currency. Example: with
   the default currency EUR, the rate of USD is `0.92` (1 USD = 0.92 EUR). The rate of the
-  default currency is always `1`.
-- **Converted amount:** The amount of a transaction in the default currency, from the rate
-  of the transaction currency.
+  default currency is always `1`. A space currency has a rate, and each transaction has its
+  own rate.
+- **Transaction rate:** The rate of one transaction, from its save. A new transaction copies
+  the rate of its space currency. A later change of the space currency does not change it.
+- **Converted amount:** The amount of a transaction in the default currency, from the
+  transaction rate.
 - **Share:** The part of the converted amount that one member paid or got, in minor units.
 - **Balance:** The sum of the paid shares of one member, minus the sum of the received
   shares, over all transactions of a space. A positive balance means "is owed".
@@ -166,11 +169,28 @@ settings of the space:
 - The user can select a different default currency. The form then shows each rate again,
   relative to the new default currency (`rebaseRates` in `src/core`). The user can
   correct the rates before the save.
-- A change of a rate changes the balances of all old transactions in that currency. This
-  agrees with D7: the current configuration of the space applies to all its transactions.
-  The currency form tells the user this before the save.
 - `save_space_currencies(space_id, currencies)` replaces the list in one database
   transaction. It refuses a list with no default currency, or with more than one.
+
+Transaction rates:
+
+- Each transaction stores its own rate, `transactions.rate`. The save of the transaction
+  locks it. The balances and the converted amounts use it, not the rate of the space
+  currency.
+- A change of the rate of a space currency changes only the transactions after the change.
+  The old balances stay the same. The currency form tells the user this.
+- The transaction form shows the rate for a currency that is not the default currency. A
+  new transaction gets the rate of the space currency. The user can change it, for example
+  to the rate of the bank. A saved transaction shows its own rate. A change of the currency
+  in the form gives the rate of the new space currency.
+- `save_transaction` takes `p_rate` as text. `null` gives the current rate of the space
+  currency. It refuses a rate other than `1` for the default currency.
+- A new default currency converts each transaction rate. `save_space_currencies` multiplies
+  each rate by the new rate of the old default currency. A transaction in the new default
+  currency gets the rate `1`. Thus the list must keep the old default currency when the
+  space has transactions. The currency form blocks its remove until the save.
+- The Splid import gives each transaction the rate of its own row: the paid member amounts
+  in the default currency, divided by the amount. Thus the balances agree with Splid.
 
 Rates and conversion:
 
@@ -179,8 +199,9 @@ Rates and conversion:
 - `convertAmount` in `src/core` converts the amount with `bigint` arithmetic:
   `amount_minor × rate × 10^(default decimals − currency decimals)`. It rounds half away from
   zero to a whole minor unit of the default currency.
-- The balance calculation converts each transaction first, then splits the converted amount
-  (D6). Thus each side still sums to the converted amount, and the balances sum to zero.
+- The balance calculation converts each transaction first, with its transaction rate, then
+  splits the converted amount (D6). Thus each side still sums to the converted amount, and
+  the balances sum to zero.
 
 ### D6: Split rules
 
@@ -359,8 +380,9 @@ lower(name))`. Unique `(space_id, id)`, for the composite foreign keys below.
 member_id)`. Foreign keys `(space_id, alias_id)` to `aliases` and `(space_id, member_id)`
   to `members` keep all three in one space.
 - **`transactions`**: `space_id`, `title` (not empty), `description` (nullable),
-  `amount_minor` (`bigint`, greater than 0), `currency`, `transaction_date` (`date`),
-  `created_by`, `updated_by`. Unique `(space_id, id)`. Foreign key `(space_id, currency)` to
+  `amount_minor` (`bigint`, greater than 0), `currency`, `rate` (`numeric(18, 8)`, greater
+  than 0, the transaction rate of D5), `transaction_date` (`date`), `created_by`,
+  `updated_by`. Unique `(space_id, id)`. Foreign key `(space_id, currency)` to
   `space_currencies`. Index `(space_id, transaction_date desc, created_at desc)`.
 - **`transaction_parties`**: `transaction_id`, `space_id`, `side` (enum `transaction_side`:
   `paid_by`, `paid_for`), `member_id` (nullable), `alias_id` (nullable). A check allows
@@ -444,7 +466,7 @@ All pages use Mantine, inside one `AppShell` with the product name and a sign-ou
     and the rows that the import skips. Then "Import" calls `import_transactions`.
     `planSplidImport` in `src/core` makes the plan. Unequal parts give custom shares (D6). The
     rate of a new currency is the sum of the converted amounts divided by the sum of the
-    amounts. Each imported transaction has the description "Imported from Splid".
+    amounts. Each transaction gets the rate of its own row (D5). Each imported transaction has the description "Imported from Splid".
   - Danger zone: delete the space. The confirmation asks for the title of the space.
 
 ## Conventions from Clarity
@@ -828,7 +850,8 @@ Notes:
 - **Alias in a split:** An alias is one party of its side. Its part then splits among its
   members (D6).
 - **Alias changes:** A change of the members of an alias changes old balances (D7).
-- **Rate changes:** A change of a rate changes old balances (D5).
+- **Rate changes:** Each transaction keeps its rate from its save. A change of a rate
+  changes only new transactions (D5).
 - **Date or time:** A date with no time and no time zone, `transaction_date` (D11).
 - **Name and host:** `ledger` and `ledger.mitchryan.org` (D12).
 - **Server function names:** The folder `serverFunctions/` and the suffix `ServerFn`

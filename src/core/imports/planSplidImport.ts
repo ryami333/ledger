@@ -30,6 +30,8 @@ export type PlannedTransaction = {
   description: string;
   amount_minor: bigint;
   currency: string;
+  /** The rate of the transaction, from its member amounts, as text. */
+  rate: string;
   /** The text `YYYY-MM-DD`. */
   transaction_date: string;
   paid_by: ImportParty[];
@@ -157,6 +159,30 @@ const planSide = ({
   return parties.some((party) => party.share_minor <= 0n) ? null : parties;
 };
 
+/**
+ * Gives the scaled rate that converts `amountMinor` of `currency` to
+ * `convertedMinor` of `defaultCurrency`, rounded half away from zero to 8
+ * decimals. A very small rate can round to zero.
+ */
+const scaledRateOfAmounts = ({
+  convertedMinor,
+  amountMinor,
+  currency,
+  defaultCurrency,
+}: {
+  convertedMinor: bigint;
+  amountMinor: bigint;
+  currency: string;
+  defaultCurrency: string;
+}): bigint =>
+  divideRounded({
+    dividend:
+      convertedMinor *
+      10n ** BigInt(getCurrencyDecimals(currency)) *
+      SCALED_RATE_ONE,
+    divisor: amountMinor * 10n ** BigInt(getCurrencyDecimals(defaultCurrency)),
+  });
+
 /** The key of a transaction for the search of duplicates. */
 const duplicateKey = ({
   title,
@@ -178,9 +204,12 @@ const duplicateKey = ({
  * - `memberIds` gives the space member of each name in `memberNames`, or
  *   `null`. A row with an amount of a name with no member is a problem.
  * - The member amounts of the export are in `defaultCurrency`. They give
- *   the shares of each side, and the rate of each new currency: the sum of
- *   the converted amounts, divided by the sum of the amounts.
- * - The import keeps the rate of a currency that the space has.
+ *   the shares of each side, and the rate of each transaction: the sum of
+ *   the paid member amounts, divided by the amount (PLAN.md, D5). Thus the
+ *   balances agree with Splid.
+ * - A new currency gets the rate of all its rows: the sum of the converted
+ *   amounts, divided by the sum of the amounts. A new transaction then gets
+ *   this rate. The import keeps the rate of a currency that the space has.
  * - A row with the same date, title, amount, and currency as a transaction
  *   of the space is a duplicate. Each transaction of the space matches one
  *   row only.
@@ -306,6 +335,21 @@ export const planSplidImport = ({
         message: "A share is too small for the currency.",
       });
     }
+    const scaledRate =
+      row.currency === defaultCurrency
+        ? SCALED_RATE_ONE
+        : scaledRateOfAmounts({
+            convertedMinor: paidTotalMinor,
+            amountMinor,
+            currency: row.currency,
+            defaultCurrency,
+          });
+    if (scaledRate === 0n) {
+      return addProblem({
+        row,
+        message: `The rate of ${row.currency} is too small.`,
+      });
+    }
     return [
       {
         row,
@@ -316,6 +360,7 @@ export const planSplidImport = ({
           description: SPLID_IMPORT_DESCRIPTION,
           amount_minor: amountMinor,
           currency: row.currency,
+          rate: formatRate(scaledRate),
           transaction_date: transactionDate,
           paid_by: paidBy,
           paid_for: paidFor,
@@ -342,16 +387,14 @@ export const planSplidImport = ({
       amountMinor: totals.amountMinor + amountMinor,
     });
   }
-  const defaultScale = 10n ** BigInt(getCurrencyDecimals(defaultCurrency));
   const newCurrencies = [...newCurrencyTotals]
     .map(([currency, totals]) => ({
       currency,
-      scaledRate: divideRounded({
-        dividend:
-          totals.convertedMinor *
-          10n ** BigInt(getCurrencyDecimals(currency)) *
-          SCALED_RATE_ONE,
-        divisor: totals.amountMinor * defaultScale,
+      scaledRate: scaledRateOfAmounts({
+        convertedMinor: totals.convertedMinor,
+        amountMinor: totals.amountMinor,
+        currency,
+        defaultCurrency,
       }),
     }))
     .toSorted((first, second) => first.currency.localeCompare(second.currency));

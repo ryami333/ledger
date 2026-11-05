@@ -27,8 +27,8 @@ export type SpaceAliasMember = {
 };
 
 /**
- * A space currency on the space page. The rate is the text of `rate::text`.
- * The default currency comes first.
+ * A space currency on the space page. The rate is a text such as "0.92". A
+ * new transaction gets this rate. The default currency comes first.
  */
 export type SpaceCurrency = {
   currency: string;
@@ -51,7 +51,9 @@ export type SpaceTransactionParty = {
 /**
  * A transaction on the space page. `transaction_date` is the text
  * `YYYY-MM-DD`, because a `Temporal` object cannot go from the server to the
- * browser. `converted_amount_minor` is the amount in the default currency.
+ * browser. `rate` is the rate from the save of the transaction, a text such
+ * as "0.92" (PLAN.md, D5). `converted_amount_minor` is the amount in the
+ * default currency, with this rate.
  */
 export type SpaceTransaction = {
   id: string;
@@ -59,6 +61,7 @@ export type SpaceTransaction = {
   description: string | null;
   amount_minor: bigint;
   currency: string;
+  rate: string;
   converted_amount_minor: bigint;
   transaction_date: string;
   parties: SpaceTransactionParty[];

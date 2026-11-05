@@ -42,8 +42,8 @@ grant delete on "public"."aliases" to authenticated;
 grant insert ("alias_id", "member_id", "space_id") on "public"."alias_members" to authenticated;
 grant delete on "public"."alias_members" to authenticated;
 
-grant insert ("space_id", "title", "description", "amount_minor", "currency", "transaction_date") on "public"."transactions" to authenticated;
-grant update ("title", "description", "amount_minor", "currency", "transaction_date") on "public"."transactions" to authenticated;
+grant insert ("space_id", "title", "description", "amount_minor", "currency", "rate", "transaction_date") on "public"."transactions" to authenticated;
+grant update ("title", "description", "amount_minor", "currency", "rate", "transaction_date") on "public"."transactions" to authenticated;
 grant delete on "public"."transactions" to authenticated;
 
 grant insert ("transaction_id", "space_id", "side", "member_id", "alias_id", "share_minor") on "public"."transaction_parties" to authenticated;
@@ -73,7 +73,7 @@ revoke execute on function "public"."save_space_currencies"("uuid", "jsonb") fro
 grant execute on function "public"."save_space_currencies"("uuid", "jsonb") to authenticated;
 revoke execute on function "public"."save_alias"("uuid", "uuid", "text", "uuid"[]) from public, anon;
 grant execute on function "public"."save_alias"("uuid", "uuid", "text", "uuid"[]) to authenticated;
-revoke execute on function "public"."save_transaction"("uuid", "uuid", "text", "text", bigint, "text", "date", "jsonb", "jsonb") from public, anon;
-grant execute on function "public"."save_transaction"("uuid", "uuid", "text", "text", bigint, "text", "date", "jsonb", "jsonb") to authenticated;
+revoke execute on function "public"."save_transaction"("uuid", "uuid", "text", "text", bigint, "text", "text", "date", "jsonb", "jsonb") from public, anon;
+grant execute on function "public"."save_transaction"("uuid", "uuid", "text", "text", bigint, "text", "text", "date", "jsonb", "jsonb") to authenticated;
 revoke execute on function "public"."import_transactions"("uuid", "jsonb", "jsonb") from public, anon;
 grant execute on function "public"."import_transactions"("uuid", "jsonb", "jsonb") to authenticated;

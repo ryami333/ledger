@@ -71,6 +71,11 @@ const toPartyRows = (values: readonly string[]) =>
  *
  * An archived member is an option only when the transaction has the member
  * (D8).
+ *
+ * The rate input shows for a currency that is not the default currency (D5).
+ * A new transaction gets the rate of the space currency. A saved transaction
+ * keeps its own rate. A change of the currency gives the rate of the space
+ * currency, or the saved rate for the saved currency.
  */
 export function TransactionForm({
   onRequestClose,
@@ -95,6 +100,22 @@ export function TransactionForm({
   transaction: SpaceTransaction | null;
 }) {
   const router = useRouter();
+  const defaultCurrency =
+    spaceCurrencies.find((spaceCurrency) => spaceCurrency.is_default)
+      ?.currency ?? "";
+  /** Gives the rate that the form shows first for a currency. */
+  const initialRateOf = (selectedCurrency: string) => {
+    if (transaction && transaction.currency === selectedCurrency) {
+      return transaction.rate;
+    }
+    return (
+      spaceCurrencies.find(
+        (spaceCurrency) => spaceCurrency.currency === selectedCurrency,
+      )?.rate ?? ""
+    );
+  };
+  const initialCurrency =
+    transaction?.currency ?? spaceCurrencies[0]?.currency ?? "";
   const partiesOfSide = (side: SplitSide) =>
     (transaction?.parties ?? []).filter((party) => party.side === side);
   const partyValuesOfSide = (side: SplitSide) =>
@@ -123,7 +144,8 @@ export function TransactionForm({
             currency: transaction.currency,
           })
         : "",
-      currency: transaction?.currency ?? spaceCurrencies[0]?.currency ?? "",
+      currency: initialCurrency,
+      rate: initialRateOf(initialCurrency),
       transaction_date: transaction?.transaction_date ?? defaultTransactionDate,
       paid_by: partyValuesOfSide("paid_by"),
       paid_by_split: splitOfSide("paid_by"),
@@ -393,13 +415,42 @@ export function TransactionForm({
                     (spaceCurrency) => spaceCurrency.currency,
                   )}
                   value={field.value}
-                  onChange={(value) => field.onChange(value ?? "")}
+                  onChange={(value) => {
+                    const selectedCurrency = value ?? "";
+                    field.onChange(selectedCurrency);
+                    form.setValue("rate", initialRateOf(selectedCurrency), {
+                      shouldDirty: true,
+                      shouldValidate: isSubmitted,
+                    });
+                  }}
                   onBlur={field.onBlur}
                   error={errors.currency?.message}
                 />
               )}
             />
           </Group>
+          {currency !== defaultCurrency && (
+            <TextInput
+              label="Rate"
+              description="The transaction keeps this rate. A later change of the rate in the space settings does not change it."
+              required
+              inputMode="decimal"
+              leftSection={
+                <Text size="sm" c="dimmed">
+                  1 {currency} =
+                </Text>
+              }
+              leftSectionWidth={80}
+              rightSection={
+                <Text size="sm" c="dimmed">
+                  {defaultCurrency}
+                </Text>
+              }
+              rightSectionWidth={48}
+              error={errors.rate?.message}
+              {...form.register("rate")}
+            />
+          )}
           <Controller
             control={form.control}
             name="transaction_date"

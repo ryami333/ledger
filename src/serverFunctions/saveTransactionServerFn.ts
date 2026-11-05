@@ -20,7 +20,8 @@ const toPartyBody = ({
 /**
  * Adds a transaction, or changes a transaction and replaces its parties, in
  * one database transaction (PLAN.md, D9). Give `null` as `transactionId` for
- * a new transaction. Returns the ID of the transaction.
+ * a new transaction. Returns the ID of the transaction. The transaction keeps
+ * the rate of the form (PLAN.md, D5).
  *
  * `values` is the input of the transaction form, not its output. The output
  * has a `bigint` and a `Temporal.PlainDate`, and the schema does not accept
@@ -47,6 +48,7 @@ export const saveTransactionServerFn = createServerFn({ method: "POST" })
         // The schema keeps the amount below Number.MAX_SAFE_INTEGER.
         p_amount_minor: Number(values.amount_minor),
         p_currency: values.currency,
+        p_rate: values.rate,
         p_transaction_date: values.transaction_date.toString(),
         p_paid_by: values.paid_by.map(toPartyBody),
         p_paid_for: values.paid_for.map(toPartyBody),

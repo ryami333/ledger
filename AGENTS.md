@@ -37,11 +37,14 @@ comments, docs, and chat.
   space can use, with its rate.
 - **Default currency:** The one space currency with `is_default`. The transaction form
   selects it first. The balances use it.
-- **Rate:** The value of one unit of a space currency in the default currency. Example: with
+- **Rate:** The value of one unit of a currency in the default currency. Example: with
   the default currency EUR, the rate of USD is `0.92` (1 USD = 0.92 EUR). The rate of the
-  default currency is always `1`.
-- **Converted amount:** The amount of a transaction in the default currency, from the rate
-  of the transaction currency.
+  default currency is always `1`. A space currency has a rate, and each transaction has its
+  own rate.
+- **Transaction rate:** The rate of one transaction, from its save. A new transaction copies
+  the rate of its space currency. A later change of the space currency does not change it.
+- **Converted amount:** The amount of a transaction in the default currency, from the
+  transaction rate.
 - **Share:** The part of the converted amount that one member paid or got, in minor units.
 - **Balance:** The sum of the paid shares of one member, minus the sum of the received
   shares, over all transactions of a space. A positive balance means "is owed".

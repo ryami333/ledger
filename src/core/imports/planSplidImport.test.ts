@@ -63,6 +63,7 @@ describe("planSplidImport", () => {
           description: SPLID_IMPORT_DESCRIPTION,
           amount_minor: 18727n,
           currency: "EUR",
+          rate: "1",
           transaction_date: "2024-10-03",
           paid_by: [equal(MITCH)],
           paid_for: [equal(MITCH), equal(SHAN)],
@@ -127,6 +128,22 @@ describe("planSplidImport", () => {
     expect(
       result.transactions.map((transaction) => transaction.amount_minor),
     ).toEqual([370000n, 300000n, 44000n]);
+  });
+
+  it("gives each transaction the rate of its own member amounts", () => {
+    const result = plan({
+      rows: [
+        "Similan islands,3700.00,THB,Shannon,–,25/02/2025,,-97.12,97.12,",
+        "Thai cooking class,3000.00,THB,Mitch,01/03/2025,01/03/2025,78.75,,,-78.75",
+        "Laundry,44000.00,IDR,Shannon,10/05/2026,11/05/2026,,-1.08,2.16,-1.08",
+      ],
+      spaceCurrencies: ["EUR", "THB"],
+    });
+    expect(result.transactions.map((transaction) => transaction.rate)).toEqual([
+      "0.02624865",
+      "0.02625",
+      "0.00004909",
+    ]);
   });
 
   it("converts unequal parts of a foreign amount to shares of that amount", () => {

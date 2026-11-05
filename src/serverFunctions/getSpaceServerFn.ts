@@ -1,5 +1,6 @@
 import { calculateBalances } from "../core/balances/calculateBalances.ts";
 import { convertAmount } from "../core/currencies/convertAmount.ts";
+import { formatRate } from "../core/currencies/formatRate.ts";
 import { parseRate } from "../core/currencies/parseRate.ts";
 import { env } from "../env.ts";
 import { authMiddleware } from "../server/authMiddleware.ts";
@@ -16,7 +17,8 @@ import { z } from "zod";
  * transaction, because `env.ts` is server only (D11).
  *
  * The transactions are in the order of D11: the newest date first, then the
- * newest `created_at` first.
+ * newest `created_at` first. Each transaction has its own rate, from its save
+ * (D5). The rates are texts such as "0.92", for the rate input.
  */
 export const getSpaceServerFn = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
@@ -29,7 +31,7 @@ export const getSpaceServerFn = createServerFn({ method: "GET" })
         members(id, name, archived_at),
         aliases(id, name, alias_members(member_id)),
         space_currencies(currency, rate::text, is_default),
-        transactions(id, title, description, amount_minor, currency, transaction_date, created_at,
+        transactions(id, title, description, amount_minor, currency, rate::text, transaction_date, created_at,
           transaction_parties(side, member_id, alias_id, share_minor))`,
       )
       .eq("id", data.spaceId)
@@ -57,23 +59,41 @@ export const getSpaceServerFn = createServerFn({ method: "GET" })
         member_id: aliasMember.member_id,
       })),
     );
-    const spaceCurrencies = space.space_currencies.toSorted(
-      (first, second) =>
-        Number(second.is_default) - Number(first.is_default) ||
-        first.currency.localeCompare(second.currency),
-    );
+    /** Gives the scaled rate of a `rate::text`, or throws. */
+    const readScaledRate = ({
+      text,
+      owner,
+    }: {
+      text: string;
+      owner: string;
+    }) => {
+      const scaledRate = parseRate(text);
+      if (scaledRate === null) {
+        throw new Error(`${owner} has no valid rate.`);
+      }
+      return scaledRate;
+    };
+    const spaceCurrencies = space.space_currencies
+      .map((spaceCurrency) => ({
+        ...spaceCurrency,
+        rate: formatRate(
+          readScaledRate({
+            text: spaceCurrency.rate,
+            owner: `The space currency ${spaceCurrency.currency}`,
+          }),
+        ),
+      }))
+      .toSorted(
+        (first, second) =>
+          Number(second.is_default) - Number(first.is_default) ||
+          first.currency.localeCompare(second.currency),
+      );
     const defaultCurrency = spaceCurrencies.find(
       (spaceCurrency) => spaceCurrency.is_default,
     )?.currency;
     if (defaultCurrency === undefined) {
       throw new Error("The space has no default currency.");
     }
-    const scaledRates = new Map(
-      spaceCurrencies.map((spaceCurrency) => [
-        spaceCurrency.currency,
-        parseRate(spaceCurrency.rate),
-      ]),
-    );
 
     const transactions = space.transactions
       .toSorted(
@@ -88,18 +108,17 @@ export const getSpaceServerFn = createServerFn({ method: "GET" })
         // PostgREST gives a bigint as a JSON number. The transaction form
         // keeps each amount below Number.MAX_SAFE_INTEGER.
         const amountMinor = BigInt(transaction.amount_minor);
-        const scaledRate = scaledRates.get(transaction.currency);
-        if (scaledRate === undefined || scaledRate === null) {
-          throw new Error(
-            `The transaction ${transaction.id} has a currency with no valid rate.`,
-          );
-        }
+        const scaledRate = readScaledRate({
+          text: transaction.rate,
+          owner: `The transaction ${transaction.id}`,
+        });
         return {
           id: transaction.id,
           title: transaction.title,
           description: transaction.description,
           amount_minor: amountMinor,
           currency: transaction.currency,
+          rate: formatRate(scaledRate),
           converted_amount_minor: convertAmount({
             amountMinor,
             currency: transaction.currency,
@@ -120,7 +139,7 @@ export const getSpaceServerFn = createServerFn({ method: "GET" })
     const balances = calculateBalances({
       members,
       aliasMembers,
-      spaceCurrencies,
+      defaultCurrency,
       transactions,
       parties: transactions.flatMap((transaction) =>
         transaction.parties.map((party) => ({

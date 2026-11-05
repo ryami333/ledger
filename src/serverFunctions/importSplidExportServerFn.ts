@@ -123,6 +123,7 @@ export const importSplidExportServerFn = createServerFn({ method: "POST" })
           description: transaction.description,
           amount_minor: Number(transaction.amount_minor),
           currency: transaction.currency,
+          rate: transaction.rate,
           transaction_date: transaction.transaction_date,
           paid_by: transaction.paid_by.map(toPartyBody),
           paid_for: transaction.paid_for.map(toPartyBody),

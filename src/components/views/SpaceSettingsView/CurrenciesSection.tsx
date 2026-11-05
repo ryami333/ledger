@@ -30,6 +30,11 @@ type CurrencyFormOutput = z.output<typeof currencyFormSchema>;
  * currency (PLAN.md, D5). A new default currency gives each rate again,
  * relative to the new default currency (`rebaseRates`). The user can correct
  * the rates before the save.
+ *
+ * A transaction keeps the rate from its save. Thus a change of a rate changes
+ * only the transactions after the change. The save of a new default currency
+ * converts the rate of each transaction with the new rate of the old default
+ * currency. Thus the form keeps the old default currency until the save.
  */
 export function CurrenciesSection({
   spaceId,
@@ -41,6 +46,12 @@ export function CurrenciesSection({
   currencies: SettingsCurrency[];
 }) {
   const router = useRouter();
+  const savedDefaultCurrency = currencies.find(
+    (currency) => currency.isDefault,
+  )?.currency;
+  const hasTransactions = currencies.some(
+    (currency) => currency.transactionCount > 0,
+  );
   const transactionCounts = new Map(
     currencies.map((currency) => [
       currency.currency,
@@ -113,7 +124,7 @@ export function CurrenciesSection({
   return (
     <SettingsSection
       title="Currencies"
-      description="The balances use the default currency. A change of a rate changes the balances of all transactions in that currency."
+      description="The balances use the default currency. Each transaction keeps the rate from its save, thus a change of a rate changes only new transactions. A new default currency converts the rate of each transaction."
     >
       <form onSubmit={form.handleSubmit(onSubmit)} noValidate>
         <Stack gap="sm">
@@ -141,6 +152,11 @@ export function CurrenciesSection({
                     return "Select a different default currency first.";
                   if (transactionCount > 0)
                     return "The currency has transactions.";
+                  if (
+                    hasTransactions &&
+                    field.currency === savedDefaultCurrency
+                  )
+                    return "Save the new default currency first. The save uses this rate to convert the rates of the transactions.";
                   return null;
                 })();
                 return (

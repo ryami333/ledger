@@ -278,12 +278,21 @@ $$;
 -- It refuses a list with no default currency, or with more than one. It
 -- removes the currencies that are not in the list. A currency in use cannot
 -- be removed: the foreign key of transactions refuses the delete.
+--
+-- A change of a rate does not change the rates of the transactions. A change
+-- of the default currency converts the rate of each transaction: it
+-- multiplies the rate by the new rate of the old default currency. A
+-- transaction in the new default currency gets the rate 1. Thus the list
+-- must keep the old default currency when the space has transactions.
 CREATE OR REPLACE FUNCTION "public"."save_space_currencies"("p_space_id" "uuid", "p_currencies" "jsonb") RETURNS "uuid"
     LANGUAGE "plpgsql" SECURITY INVOKER
     SET "search_path" TO ''
     AS $$
 declare
   v_default_count integer;
+  v_old_default text;
+  v_new_default text;
+  v_conversion_rate numeric(18, 8);
 begin
   if pg_catalog.jsonb_typeof(p_currencies) is distinct from 'array' then
     raise exception 'save_space_currencies needs a jsonb array'
@@ -302,6 +311,37 @@ begin
   if not exists (select from public.spaces where spaces.id = p_space_id) then
     raise exception 'The space % does not exist', p_space_id
       using errcode = 'P0002';
+  end if;
+
+  select space_currencies.currency into v_old_default
+  from public.space_currencies
+  where space_currencies.space_id = p_space_id
+    and space_currencies.is_default;
+
+  select item ->> 'currency' into v_new_default
+  from pg_catalog.jsonb_array_elements(p_currencies) as item
+  where (item ->> 'is_default')::boolean;
+
+  if v_old_default is distinct from v_new_default then
+    select (item ->> 'rate')::numeric(18, 8) into v_conversion_rate
+    from pg_catalog.jsonb_array_elements(p_currencies) as item
+    where item ->> 'currency' = v_old_default;
+
+    if v_conversion_rate is null and exists (
+      select from public.transactions
+      where transactions.space_id = p_space_id
+        and transactions.currency <> v_new_default
+    ) then
+      raise exception 'save_space_currencies needs the old default currency % to convert the rates of the transactions', v_old_default
+        using errcode = '22023';
+    end if;
+
+    update public.transactions
+    set rate = case
+      when transactions.currency = v_new_default then 1
+      else transactions.rate * v_conversion_rate
+    end
+    where transactions.space_id = p_space_id;
   end if;
 
   delete from public.space_currencies
@@ -384,15 +424,23 @@ $$;
 -- each with an optional "share_minor" (PLAN.md, D6). Returns the ID of the
 -- transaction.
 --
--- It refuses an empty side, and an archived member in a new transaction. The
--- composite foreign keys refuse a party of a different space and a currency
--- that is not a space currency.
-CREATE OR REPLACE FUNCTION "public"."save_transaction"("p_transaction_id" "uuid", "p_space_id" "uuid", "p_title" "text", "p_description" "text", "p_amount_minor" bigint, "p_currency" "text", "p_transaction_date" "date", "p_paid_by" "jsonb", "p_paid_for" "jsonb") RETURNS "uuid"
+-- p_rate is the rate of the transaction, as a string, for example "0.92"
+-- (PLAN.md, D5). Give null to use the current rate of the space currency.
+-- The transaction keeps the rate. A later change of the space currency does
+-- not change it.
+--
+-- It refuses an empty side, an archived member in a new transaction, and a
+-- rate other than 1 for the default currency. The composite foreign keys
+-- refuse a party of a different space and a currency that is not a space
+-- currency.
+CREATE OR REPLACE FUNCTION "public"."save_transaction"("p_transaction_id" "uuid", "p_space_id" "uuid", "p_title" "text", "p_description" "text", "p_amount_minor" bigint, "p_currency" "text", "p_rate" "text", "p_transaction_date" "date", "p_paid_by" "jsonb", "p_paid_for" "jsonb") RETURNS "uuid"
     LANGUAGE "plpgsql" SECURITY INVOKER
     SET "search_path" TO ''
     AS $$
 declare
   v_transaction_id uuid;
+  v_rate numeric(18, 8);
+  v_is_default boolean;
 begin
   if pg_catalog.jsonb_typeof(p_paid_by) is distinct from 'array'
     or pg_catalog.jsonb_array_length(p_paid_by) = 0
@@ -413,9 +461,26 @@ begin
       using errcode = '22023';
   end if;
 
+  -- A currency that is not a space currency gives null here. The foreign key
+  -- of the insert or the update then refuses it.
+  select space_currencies.rate, space_currencies.is_default
+  into v_rate, v_is_default
+  from public.space_currencies
+  where space_currencies.space_id = p_space_id
+    and space_currencies.currency = p_currency;
+
+  if p_rate is not null then
+    v_rate := p_rate::numeric(18, 8);
+  end if;
+
+  if v_is_default and v_rate <> 1 then
+    raise exception 'save_transaction needs the rate 1 for the default currency %', p_currency
+      using errcode = '22023';
+  end if;
+
   if p_transaction_id is null then
-    insert into public.transactions (space_id, title, description, amount_minor, currency, transaction_date)
-    values (p_space_id, p_title, p_description, p_amount_minor, p_currency, p_transaction_date)
+    insert into public.transactions (space_id, title, description, amount_minor, currency, rate, transaction_date)
+    values (p_space_id, p_title, p_description, p_amount_minor, p_currency, coalesce(v_rate, 1), p_transaction_date)
     returning id into v_transaction_id;
   else
     update public.transactions
@@ -423,6 +488,7 @@ begin
         description = p_description,
         amount_minor = p_amount_minor,
         currency = p_currency,
+        rate = coalesce(v_rate, 1),
         transaction_date = p_transaction_date
     where transactions.id = p_transaction_id
       and transactions.space_id = p_space_id
@@ -466,9 +532,10 @@ $$;
 -- rate of a currency that the space has.
 --
 -- p_transactions is a jsonb array of { "title", "description",
--- "amount_minor", "currency", "transaction_date", "paid_by", "paid_for" },
--- with the values of save_transaction. save_transaction saves each one. Thus
--- each rule of save_transaction applies.
+-- "amount_minor", "currency", "rate", "transaction_date", "paid_by",
+-- "paid_for" }, with the values of save_transaction. A null or missing
+-- "rate" gives the rate of the space currency. save_transaction saves each
+-- one. Thus each rule of save_transaction applies.
 CREATE OR REPLACE FUNCTION "public"."import_transactions"("p_space_id" "uuid", "p_currencies" "jsonb", "p_transactions" "jsonb") RETURNS integer
     LANGUAGE "plpgsql" SECURITY INVOKER
     SET "search_path" TO ''
@@ -508,6 +575,7 @@ begin
       v_item ->> 'description',
       (v_item ->> 'amount_minor')::bigint,
       v_item ->> 'currency',
+      v_item ->> 'rate',
       (v_item ->> 'transaction_date')::date,
       v_item -> 'paid_by',
       v_item -> 'paid_for'

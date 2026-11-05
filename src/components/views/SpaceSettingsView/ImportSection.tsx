@@ -38,7 +38,8 @@ const VISIBLE_PROBLEM_COUNT = 20;
  * The CSV import of a Splid export. The user selects the file, then the
  * member of each name in the file. "Check the Import" shows what the import
  * does, with no write. Then "Import" adds the transactions, and the new
- * currencies with a rate from the export.
+ * currencies with a rate from the export. Each transaction keeps the rate of
+ * its own row (PLAN.md, D5).
  */
 export function ImportSection({
   spaceId,
@@ -278,8 +279,8 @@ function ImportSummaryPanel({
             <List.Item key={newCurrency.currency}>
               New currency: 1 {newCurrency.currency} ={" "}
               {scaledRate === null ? newCurrency.rate : formatRate(scaledRate)}{" "}
-              {summary.defaultCurrency}, from the amounts in the file. You can
-              change the rate after the import.
+              {summary.defaultCurrency}, from the amounts in the file. New
+              transactions get this rate. You can change it after the import.
             </List.Item>
           );
         })}

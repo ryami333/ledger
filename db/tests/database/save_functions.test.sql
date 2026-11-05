@@ -8,7 +8,7 @@ begin;
 \ir helpers.psql
 \ir fixtures.psql
 
-select plan(33);
+select plan(42);
 
 select tests.authenticate_as('00000000-0000-0000-0000-00000000000a');
 
@@ -74,6 +74,63 @@ select throws_ok(
   'save_space_currencies: a default rate that is not 1 is refused'
 );
 
+-- The rate of a transaction (PLAN.md, D5)
+
+select lives_ok(
+  $$ select tests.run_with_deferred_checks($q$
+       select public.save_transaction(null, '10000000-0000-0000-0000-00000000000a',
+         'Taxi', null, 1000, 'EUR', null, '2026-11-02',
+         '[{"member_id": "20000000-0000-0000-0000-0000000000a1"}]',
+         '[{"member_id": "20000000-0000-0000-0000-0000000000a2"}]')
+     $q$) $$,
+  'save_transaction: saves a transaction with no rate'
+);
+
+select lives_ok(
+  $$ select tests.run_with_deferred_checks($q$
+       select public.save_transaction(null, '10000000-0000-0000-0000-00000000000a',
+         'Bus', null, 1000, 'USD', '0.9', '2026-11-02',
+         '[{"member_id": "20000000-0000-0000-0000-0000000000a1"}]',
+         '[{"member_id": "20000000-0000-0000-0000-0000000000a2"}]')
+     $q$) $$,
+  'save_transaction: saves a transaction with a rate'
+);
+
+select results_eq(
+  $$ select title, rate::text from public.transactions
+     where space_id = '10000000-0000-0000-0000-00000000000a'
+     order by title $$,
+  $$ values ('Bus', '0.90000000'), ('Dinner', '0.92000000'), ('Taxi', '1.00000000') $$,
+  'save_transaction: a null rate gives the rate of the space currency, and a given rate stays'
+);
+
+select lives_ok(
+  $$ select tests.run_with_deferred_checks($q$
+       select public.save_space_currencies('10000000-0000-0000-0000-00000000000a',
+         '[{"currency": "EUR", "rate": "1", "is_default": true},
+           {"currency": "USD", "rate": "0.95", "is_default": false}]')
+     $q$) $$,
+  'save_space_currencies: changes the rate of USD'
+);
+
+select results_eq(
+  $$ select title, rate::text from public.transactions
+     where space_id = '10000000-0000-0000-0000-00000000000a'
+     order by title $$,
+  $$ values ('Bus', '0.90000000'), ('Dinner', '0.92000000'), ('Taxi', '1.00000000') $$,
+  'save_space_currencies: a change of a rate keeps the rates of the transactions'
+);
+
+select throws_ok(
+  $$ select public.save_transaction(null, '10000000-0000-0000-0000-00000000000a',
+       'Lunch', null, 1000, 'EUR', '2', '2026-11-02',
+       '[{"member_id": "20000000-0000-0000-0000-0000000000a1"}]',
+       '[{"member_id": "20000000-0000-0000-0000-0000000000a2"}]') $$,
+  '22023',
+  null,
+  'save_transaction: a rate other than 1 for the default currency is refused'
+);
+
 select lives_ok(
   $$ select tests.run_with_deferred_checks($q$
        select public.save_space_currencies('10000000-0000-0000-0000-00000000000a',
@@ -90,6 +147,23 @@ select results_eq(
      order by currency $$,
   $$ values ('EUR', '1.08695652', false), ('GBP', '1.27000000', false), ('USD', '1.00000000', true) $$,
   'save_space_currencies: the rows are the new list, with all digits of each rate'
+);
+
+select results_eq(
+  $$ select title, rate::text from public.transactions
+     where space_id = '10000000-0000-0000-0000-00000000000a'
+     order by title $$,
+  $$ values ('Bus', '1.00000000'), ('Dinner', '1.00000000'), ('Taxi', '1.08695652') $$,
+  'save_space_currencies: a new default currency converts the rates of the transactions'
+);
+
+select throws_ok(
+  $$ select public.save_space_currencies('10000000-0000-0000-0000-00000000000a',
+       '[{"currency": "EUR", "rate": "1", "is_default": true},
+         {"currency": "GBP", "rate": "1.17", "is_default": false}]') $$,
+  '22023',
+  null,
+  'save_space_currencies: a new default currency with no rate for the old default currency is refused'
 );
 
 select throws_ok(
@@ -141,7 +215,7 @@ select throws_ok(
 
 select throws_ok(
   $$ select public.save_transaction(null, '10000000-0000-0000-0000-00000000000a',
-       'Lunch', null, 1000, 'EUR', '2026-11-02',
+       'Lunch', null, 1000, 'EUR', null, '2026-11-02',
        '[]', '[{"member_id": "20000000-0000-0000-0000-0000000000a1"}]') $$,
   '22023',
   null,
@@ -156,7 +230,7 @@ select lives_ok(
 
 select throws_ok(
   $$ select public.save_transaction(null, '10000000-0000-0000-0000-00000000000a',
-       'Lunch', null, 1000, 'EUR', '2026-11-02',
+       'Lunch', null, 1000, 'EUR', null, '2026-11-02',
        '[{"member_id": "20000000-0000-0000-0000-0000000000a3"}]',
        '[{"member_id": "20000000-0000-0000-0000-0000000000a1"}]') $$,
   '22023',
@@ -167,7 +241,7 @@ select throws_ok(
 select lives_ok(
   $$ select tests.run_with_deferred_checks($q$
        select public.save_transaction(null, '10000000-0000-0000-0000-00000000000a',
-         'Lunch', null, 1000, 'EUR', '2026-11-02',
+         'Lunch', null, 1000, 'EUR', null, '2026-11-02',
          '[{"alias_id": "30000000-0000-0000-0000-00000000000a"}, {"member_id": "20000000-0000-0000-0000-0000000000a1"}]',
          '[{"member_id": "20000000-0000-0000-0000-0000000000a1"}, {"member_id": "20000000-0000-0000-0000-0000000000a2"}]')
      $q$) $$,
@@ -190,7 +264,7 @@ select throws_ok(
 select lives_ok(
   $$ select tests.run_with_deferred_checks($q$
        select public.save_transaction(null, '10000000-0000-0000-0000-00000000000a',
-         'Split lunch', null, 1000, 'EUR', '2026-11-03',
+         'Split lunch', null, 1000, 'EUR', null, '2026-11-03',
          '[{"member_id": "20000000-0000-0000-0000-0000000000a1"}]',
          '[{"member_id": "20000000-0000-0000-0000-0000000000a1", "share_minor": 400},
            {"alias_id": "30000000-0000-0000-0000-00000000000a", "share_minor": 600}]')
@@ -210,7 +284,7 @@ select results_eq(
 select throws_ok(
   $$ select tests.run_with_deferred_checks($q$
        select public.save_transaction(null, '10000000-0000-0000-0000-00000000000a',
-         'Lunch', null, 1000, 'EUR', '2026-11-03',
+         'Lunch', null, 1000, 'EUR', null, '2026-11-03',
          '[{"member_id": "20000000-0000-0000-0000-0000000000a1"}]',
          '[{"member_id": "20000000-0000-0000-0000-0000000000a1", "share_minor": 400},
            {"member_id": "20000000-0000-0000-0000-0000000000a2", "share_minor": 500}]')
@@ -223,7 +297,7 @@ select throws_ok(
 select throws_ok(
   $$ select tests.run_with_deferred_checks($q$
        select public.save_transaction(null, '10000000-0000-0000-0000-00000000000a',
-         'Lunch', null, 1000, 'EUR', '2026-11-03',
+         'Lunch', null, 1000, 'EUR', null, '2026-11-03',
          '[{"member_id": "20000000-0000-0000-0000-0000000000a1"}]',
          '[{"member_id": "20000000-0000-0000-0000-0000000000a1", "share_minor": 1000},
            {"member_id": "20000000-0000-0000-0000-0000000000a2"}]')
@@ -236,7 +310,7 @@ select throws_ok(
 select throws_ok(
   $$ select tests.run_with_deferred_checks($q$
        select public.save_transaction(null, '10000000-0000-0000-0000-00000000000a',
-         'Lunch', null, 1000, 'EUR', '2026-11-03',
+         'Lunch', null, 1000, 'EUR', null, '2026-11-03',
          '[{"member_id": "20000000-0000-0000-0000-0000000000a1"}]',
          '[{"member_id": "20000000-0000-0000-0000-0000000000a1", "share_minor": 1000},
            {"member_id": "20000000-0000-0000-0000-0000000000a2", "share_minor": 0}]')
@@ -265,7 +339,7 @@ select lives_ok(
 
 select throws_ok(
   $$ select public.save_transaction('40000000-0000-0000-0000-00000000000a',
-       '10000000-0000-0000-0000-00000000000b', 'Dinner', null, 4000, 'EUR', '2026-11-01',
+       '10000000-0000-0000-0000-00000000000b', 'Dinner', null, 4000, 'EUR', null, '2026-11-01',
        '[{"member_id": "20000000-0000-0000-0000-0000000000b1"}]',
        '[{"member_id": "20000000-0000-0000-0000-0000000000b1"}]') $$,
   'P0002',
@@ -285,7 +359,7 @@ select lives_ok(
             "paid_for": [{"member_id": "20000000-0000-0000-0000-0000000000a1", "alias_id": null, "share_minor": 1000},
                          {"member_id": "20000000-0000-0000-0000-0000000000a2", "alias_id": null, "share_minor": 2000}]},
            {"title": "Imported boat", "description": null,
-            "amount_minor": 370000, "currency": "THB", "transaction_date": "2025-02-25",
+            "amount_minor": 370000, "currency": "THB", "rate": "0.026", "transaction_date": "2025-02-25",
             "paid_by": [{"member_id": "20000000-0000-0000-0000-0000000000a2", "alias_id": null, "share_minor": null}],
             "paid_for": [{"member_id": "20000000-0000-0000-0000-0000000000a1", "alias_id": null, "share_minor": null}]}]')
      $q$) $$,
@@ -305,6 +379,14 @@ select ok(
    where space_id = '10000000-0000-0000-0000-00000000000a'
      and currency = 'EUR'),
   'import_transactions: keeps the rate of an existing currency'
+);
+
+select results_eq(
+  $$ select title, rate::text from public.transactions
+     where title like 'Imported %'
+     order by title $$,
+  $$ values ('Imported boat', '0.02600000'), ('Imported dinner', '1.08695652') $$,
+  'import_transactions: keeps the rate of each row, or gives the rate of the space currency'
 );
 
 select results_eq(

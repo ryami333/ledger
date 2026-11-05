@@ -1,3 +1,5 @@
+import { formatRate } from "../currencies/formatRate.ts";
+import { parseRate } from "../currencies/parseRate.ts";
 import { parseAmount } from "../money/parseAmount.ts";
 import { resolveCustomSplit } from "../splits/customSplitHelpers.ts";
 import {
@@ -67,6 +69,10 @@ const customSplitSchema = z
  *
  * Each party of the output has `share_minor`: its custom share in minor units
  * of the transaction currency, or `null` for an equal split.
+ *
+ * `rate` is the rate of the transaction (PLAN.md, D5). The output gives it as
+ * a text with no zeros at the end, for example "0.92". The form gives "1" for
+ * the default currency. `save_transaction` refuses a different rate there.
  */
 export const transactionFormSchema = z
   .object({
@@ -80,6 +86,17 @@ export const transactionFormSchema = z
         "Enter an amount, for example 12.50.",
       ),
     currency: currencyCodeSchema,
+    rate: z.string().transform((text, context) => {
+      const scaledRate = parseRate(text);
+      if (scaledRate === null) {
+        context.addIssue({
+          code: "custom",
+          message: "Enter a rate larger than zero, with 8 decimals or fewer.",
+        });
+        return z.NEVER;
+      }
+      return formatRate(scaledRate);
+    }),
     transaction_date: z
       .string()
       .nullable()
@@ -174,6 +191,7 @@ export const transactionFormSchema = z
       description: values.description,
       amount_minor: amountMinor,
       currency: values.currency,
+      rate: values.rate,
       transaction_date: values.transaction_date,
       paid_by: paidBy,
       paid_for: paidFor,

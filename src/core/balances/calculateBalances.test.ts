@@ -25,23 +25,29 @@ const aliasMembers = [
   { alias_id: obamas, member_id: michelle },
 ];
 
-const spaceCurrencies = [
-  { currency: "EUR", rate: "1.00000000", is_default: true },
-  { currency: "USD", rate: "0.92000000", is_default: false },
-  { currency: "JPY", rate: "0.00613000", is_default: false },
-];
+/** The rate of a transaction with no `rate`. The default currency is EUR. */
+const currentRates = new Map([
+  ["EUR", "1.00000000"],
+  ["USD", "0.92000000"],
+  ["JPY", "0.00613000"],
+]);
 
-/** Makes the rows of one transaction. Each ID can be a member or an alias. */
+/**
+ * Makes the rows of one transaction. Each ID can be a member or an alias.
+ * With no `rate`, the transaction gets the rate of `currentRates`.
+ */
 const makeTransaction = ({
   id,
   amountMinor,
   currency,
+  rate = currentRates.get(currency) ?? "",
   paidBy,
   paidFor,
 }: {
   id: string;
   amountMinor: bigint;
   currency: string;
+  rate?: string;
   paidBy: string[];
   paidFor: string[];
 }): { transaction: BalanceTransactionRow; parties: BalancePartyRow[] } => {
@@ -54,7 +60,7 @@ const makeTransaction = ({
       alias_id: partyId === obamas ? obamas : null,
     });
   return {
-    transaction: { id, amount_minor: amountMinor, currency },
+    transaction: { id, amount_minor: amountMinor, currency, rate },
     parties: [
       ...paidBy.map(toParty("paid_by")),
       ...paidFor.map(toParty("paid_for")),
@@ -72,7 +78,7 @@ const calculate = ({
   calculateBalances({
     members: spaceMembers,
     aliasMembers,
-    spaceCurrencies,
+    defaultCurrency: "EUR",
     transactions: rows.map((row) => row.transaction),
     parties: rows.flatMap((row) => row.parties),
   });
@@ -120,6 +126,33 @@ describe("calculateBalances", () => {
     expect(balances.slice(0, 2)).toEqual([
       { member_id: barack, name: "Barack", balance_minor: 1840n },
       { member_id: donald, name: "Donald", balance_minor: -1840n },
+    ]);
+  });
+
+  it("converts each transaction with its own rate", () => {
+    // $40.00 × 0.92 = €36.80, and $40.00 × 0.85 = €34.00.
+    const balances = calculate({
+      rows: [
+        makeTransaction({
+          id: "t1",
+          amountMinor: 4000n,
+          currency: "USD",
+          paidBy: [barack],
+          paidFor: [donald],
+        }),
+        makeTransaction({
+          id: "t2",
+          amountMinor: 4000n,
+          currency: "USD",
+          rate: "0.85",
+          paidBy: [donald],
+          paidFor: [barack],
+        }),
+      ],
+    });
+    expect(balances.slice(0, 2)).toEqual([
+      { member_id: barack, name: "Barack", balance_minor: 280n },
+      { member_id: donald, name: "Donald", balance_minor: -280n },
     ]);
   });
 
@@ -228,12 +261,13 @@ describe("calculateBalances", () => {
             id: "t1",
             amountMinor: 100n,
             currency: "GBP",
+            rate: "0",
             paidBy: [barack],
             paidFor: [donald],
           }),
         ],
       }),
-    ).toThrow("The currency GBP of the transaction t1 is not a space currency");
+    ).toThrow("The rate of the transaction t1 is not valid");
     expect(() =>
       calculate({
         rows: [

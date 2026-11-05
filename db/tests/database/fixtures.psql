@@ -57,10 +57,10 @@ begin
     ('30000000-0000-0000-0000-00000000000a', '20000000-0000-0000-0000-0000000000a2', '10000000-0000-0000-0000-00000000000a'),
     ('30000000-0000-0000-0000-0000000000a2', '20000000-0000-0000-0000-0000000000a1', '10000000-0000-0000-0000-00000000000a');
 
-  insert into public.transactions (id, space_id, title, amount_minor, currency, transaction_date)
+  insert into public.transactions (id, space_id, title, amount_minor, currency, rate, transaction_date)
   values
     ('40000000-0000-0000-0000-00000000000a', '10000000-0000-0000-0000-00000000000a',
-     'Dinner', 4000, 'USD', '2026-11-01');
+     'Dinner', 4000, 'USD', 0.92, '2026-11-01');
 
   insert into public.transaction_parties (transaction_id, space_id, side, member_id, alias_id)
   values

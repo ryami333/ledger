@@ -269,6 +269,7 @@ export type Database = {
           currency: string;
           description: string | null;
           id: string;
+          rate: number;
           space_id: string;
           title: string;
           transaction_date: string;
@@ -283,6 +284,7 @@ export type Database = {
           currency: string;
           description?: string | null;
           id?: string;
+          rate: number;
           space_id: string;
           title: string;
           transaction_date: string;
@@ -296,6 +298,7 @@ export type Database = {
           currency?: string;
           description?: string | null;
           id?: string;
+          rate?: number;
           space_id?: string;
           title?: string;
           transaction_date?: string;
@@ -386,6 +389,7 @@ export type Database = {
           p_description: string;
           p_paid_by: Json;
           p_paid_for: Json;
+          p_rate: string;
           p_space_id: string;
           p_title: string;
           p_transaction_date: string;

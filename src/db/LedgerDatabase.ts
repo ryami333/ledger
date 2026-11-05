@@ -20,7 +20,8 @@ type WithNullableArgs<
 
 /**
  * The generated `Database` types, with the nullable arguments of the
- * functions of D9: `p_description`, `p_alias_id`, and `p_transaction_id`.
+ * functions of D9: `p_description`, `p_alias_id`, `p_transaction_id`, and
+ * `p_rate`.
  */
 export type LedgerDatabase = Omit<Database, "public"> & {
   public: Omit<GeneratedPublic, "Functions"> & {
@@ -32,7 +33,7 @@ export type LedgerDatabase = Omit<Database, "public"> & {
       save_alias: WithNullableArgs<"save_alias", "p_alias_id">;
       save_transaction: WithNullableArgs<
         "save_transaction",
-        "p_transaction_id" | "p_description"
+        "p_transaction_id" | "p_description" | "p_rate"
       >;
     };
   };

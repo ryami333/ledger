@@ -52,21 +52,21 @@ values
   ('d0000000-0000-4000-8000-000000000001', 'c0000000-0000-4000-8000-000000000001', 'b0000000-0000-4000-8000-000000000001'),
   ('d0000000-0000-4000-8000-000000000001', 'c0000000-0000-4000-8000-000000000002', 'b0000000-0000-4000-8000-000000000001');
 
-insert into public.transactions (id, space_id, title, description, amount_minor, currency, transaction_date, created_by, updated_by)
+insert into public.transactions (id, space_id, title, description, amount_minor, currency, rate, transaction_date, created_by, updated_by)
 values
   -- The example of PLAN.md, D6.
   ('e0000000-0000-4000-8000-000000000001', 'b0000000-0000-4000-8000-000000000001',
-   'Groceries', null, 10000, 'EUR', '2026-10-28',
+   'Groceries', null, 10000, 'EUR', 1, '2026-10-28',
    'a0000000-0000-4000-8000-000000000001', 'a0000000-0000-4000-8000-000000000001'),
   ('e0000000-0000-4000-8000-000000000002', 'b0000000-0000-4000-8000-000000000001',
-   'Dinner', 'Barack pays dinner for all four.', 18450, 'EUR', '2026-10-30',
+   'Dinner', 'Barack pays dinner for all four.', 18450, 'EUR', 1, '2026-10-30',
    'a0000000-0000-4000-8000-000000000001', 'a0000000-0000-4000-8000-000000000001'),
   ('e0000000-0000-4000-8000-000000000003', 'b0000000-0000-4000-8000-000000000001',
-   'Museum tickets', null, 4000, 'USD', '2026-11-01',
+   'Museum tickets', null, 4000, 'USD', 0.92, '2026-11-01',
    'a0000000-0000-4000-8000-000000000001', 'a0000000-0000-4000-8000-000000000001'),
   -- A settle-up payment (PLAN.md, D10).
   ('e0000000-0000-4000-8000-000000000004', 'b0000000-0000-4000-8000-000000000001',
-   'Settle up', null, 2500, 'EUR', '2026-11-02',
+   'Settle up', null, 2500, 'EUR', 1, '2026-11-02',
    'a0000000-0000-4000-8000-000000000001', 'a0000000-0000-4000-8000-000000000001');
 
 insert into public.transaction_parties (transaction_id, space_id, side, member_id, alias_id)
