@@ -8,14 +8,26 @@ import { createFileRoute } from "@tanstack/react-router";
  * code verifier, and stores them in a cookie. Then the browser goes to Pocket
  * ID. Pocket ID sends the browser back to `/api/auth/callback/pocket-id`, and
  * better-auth then opens `next`.
+ *
+ * This route is also the login page of the OAuth server for the MCP clients
+ * (PLAN.md, D15). The authorize endpoint then sends a signed query with `sig`.
+ * The route gives this query to better-auth as `oauth_query`. After the
+ * Pocket ID callback, better-auth continues the authorization, not `next`.
  */
 export const Route = createFileRoute("/auth/sign-in")({
   server: {
     handlers: {
       GET: async ({ request }) => {
         const requestUrl = new URL(request.url);
+        const oauthQuery = (() => {
+          if (!requestUrl.searchParams.has("sig")) return null;
+          const parameters = new URLSearchParams(requestUrl.searchParams);
+          parameters.delete("canonical");
+          return parameters.toString();
+        })();
         const next = resolveRedirectPath({
-          next: requestUrl.searchParams.get("next"),
+          next:
+            oauthQuery === null ? requestUrl.searchParams.get("next") : null,
           fallback: "/",
         });
         // The callback opens on the host of APP_URL. The state cookie must be
@@ -32,7 +44,10 @@ export const Route = createFileRoute("/auth/sign-in")({
           !requestUrl.searchParams.has("canonical")
         ) {
           const canonicalUrl = new URL("/auth/sign-in", appUrl);
-          canonicalUrl.searchParams.set("next", next);
+          canonicalUrl.search =
+            oauthQuery === null
+              ? new URLSearchParams({ next }).toString()
+              : oauthQuery;
           canonicalUrl.searchParams.set("canonical", "1");
           return new Response(null, {
             status: 302,
@@ -48,6 +63,7 @@ export const Route = createFileRoute("/auth/sign-in")({
               env.APP_URL,
             ).href,
             disableRedirect: true,
+            ...(oauthQuery === null ? {} : { oauth_query: oauthQuery }),
           },
           headers: request.headers,
           returnHeaders: true,

@@ -13,7 +13,11 @@ import { Route as AppRouteImport } from './routes/_app'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as AppIndexRouteImport } from './routes/_app.index'
 import { Route as AuthSignInRouteImport } from './routes/auth.sign-in'
+import { Route as OauthConsentRouteImport } from './routes/oauth.consent'
+import { Route as DotwellKnownOauthProtectedResourceMcpRouteImport } from './routes/[.]well-known.oauth-protected-resource.mcp'
 import { Route as ApiAuthSplatRouteImport } from './routes/api.auth.$'
+import { Route as DotwellKnownOauthAuthorizationServerApiAuthRouteImport } from './routes/[.]well-known.oauth-authorization-server.api.auth'
+import { Route as DotwellKnownOpenidConfigurationApiAuthRouteImport } from './routes/[.]well-known.openid-configuration.api.auth'
 import { Route as AppSpacesSpaceSlugIndexRouteImport } from './routes/_app.spaces.$spaceSlug.index'
 import { Route as AppSpacesSpaceSlugSettingsRouteImport } from './routes/_app.spaces.$spaceSlug.settings'
 
@@ -36,11 +40,34 @@ const AuthSignInRoute = AuthSignInRouteImport.update({
   path: '/auth/sign-in',
   getParentRoute: () => rootRouteImport,
 } as any)
+const OauthConsentRoute = OauthConsentRouteImport.update({
+  id: '/oauth/consent',
+  path: '/oauth/consent',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DotwellKnownOauthProtectedResourceMcpRoute =
+  DotwellKnownOauthProtectedResourceMcpRouteImport.update({
+    id: '/.well-known/oauth-protected-resource/mcp',
+    path: '/.well-known/oauth-protected-resource/mcp',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   id: '/api/auth/$',
   path: '/api/auth/$',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DotwellKnownOauthAuthorizationServerApiAuthRoute =
+  DotwellKnownOauthAuthorizationServerApiAuthRouteImport.update({
+    id: '/.well-known/oauth-authorization-server/api/auth',
+    path: '/.well-known/oauth-authorization-server/api/auth',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const DotwellKnownOpenidConfigurationApiAuthRoute =
+  DotwellKnownOpenidConfigurationApiAuthRouteImport.update({
+    id: '/.well-known/openid-configuration/api/auth',
+    path: '/.well-known/openid-configuration/api/auth',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const AppSpacesSpaceSlugIndexRoute = AppSpacesSpaceSlugIndexRouteImport.update({
   id: '/spaces/$spaceSlug/',
   path: '/spaces/$spaceSlug/',
@@ -57,15 +84,23 @@ export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
   '/login': typeof LoginRoute
   '/auth/sign-in': typeof AuthSignInRoute
+  '/oauth/consent': typeof OauthConsentRoute
+  '/.well-known/oauth-protected-resource/mcp': typeof DotwellKnownOauthProtectedResourceMcpRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/.well-known/oauth-authorization-server/api/auth': typeof DotwellKnownOauthAuthorizationServerApiAuthRoute
+  '/.well-known/openid-configuration/api/auth': typeof DotwellKnownOpenidConfigurationApiAuthRoute
   '/spaces/$spaceSlug/settings': typeof AppSpacesSpaceSlugSettingsRoute
   '/spaces/$spaceSlug/': typeof AppSpacesSpaceSlugIndexRoute
 }
 export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/auth/sign-in': typeof AuthSignInRoute
+  '/oauth/consent': typeof OauthConsentRoute
   '/': typeof AppIndexRoute
+  '/.well-known/oauth-protected-resource/mcp': typeof DotwellKnownOauthProtectedResourceMcpRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/.well-known/oauth-authorization-server/api/auth': typeof DotwellKnownOauthAuthorizationServerApiAuthRoute
+  '/.well-known/openid-configuration/api/auth': typeof DotwellKnownOpenidConfigurationApiAuthRoute
   '/spaces/$spaceSlug/settings': typeof AppSpacesSpaceSlugSettingsRoute
   '/spaces/$spaceSlug': typeof AppSpacesSpaceSlugIndexRoute
 }
@@ -74,8 +109,12 @@ export interface FileRoutesById {
   '/_app': typeof AppRouteWithChildren
   '/login': typeof LoginRoute
   '/auth/sign-in': typeof AuthSignInRoute
+  '/oauth/consent': typeof OauthConsentRoute
   '/_app/': typeof AppIndexRoute
+  '/.well-known/oauth-protected-resource/mcp': typeof DotwellKnownOauthProtectedResourceMcpRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/.well-known/oauth-authorization-server/api/auth': typeof DotwellKnownOauthAuthorizationServerApiAuthRoute
+  '/.well-known/openid-configuration/api/auth': typeof DotwellKnownOpenidConfigurationApiAuthRoute
   '/_app/spaces/$spaceSlug/settings': typeof AppSpacesSpaceSlugSettingsRoute
   '/_app/spaces/$spaceSlug/': typeof AppSpacesSpaceSlugIndexRoute
 }
@@ -85,15 +124,23 @@ export interface FileRouteTypes {
     | '/'
     | '/login'
     | '/auth/sign-in'
+    | '/oauth/consent'
+    | '/.well-known/oauth-protected-resource/mcp'
     | '/api/auth/$'
+    | '/.well-known/oauth-authorization-server/api/auth'
+    | '/.well-known/openid-configuration/api/auth'
     | '/spaces/$spaceSlug/settings'
     | '/spaces/$spaceSlug/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/login'
     | '/auth/sign-in'
+    | '/oauth/consent'
     | '/'
+    | '/.well-known/oauth-protected-resource/mcp'
     | '/api/auth/$'
+    | '/.well-known/oauth-authorization-server/api/auth'
+    | '/.well-known/openid-configuration/api/auth'
     | '/spaces/$spaceSlug/settings'
     | '/spaces/$spaceSlug'
   id:
@@ -101,8 +148,12 @@ export interface FileRouteTypes {
     | '/_app'
     | '/login'
     | '/auth/sign-in'
+    | '/oauth/consent'
     | '/_app/'
+    | '/.well-known/oauth-protected-resource/mcp'
     | '/api/auth/$'
+    | '/.well-known/oauth-authorization-server/api/auth'
+    | '/.well-known/openid-configuration/api/auth'
     | '/_app/spaces/$spaceSlug/settings'
     | '/_app/spaces/$spaceSlug/'
   fileRoutesById: FileRoutesById
@@ -111,7 +162,11 @@ export interface RootRouteChildren {
   AppRoute: typeof AppRouteWithChildren
   LoginRoute: typeof LoginRoute
   AuthSignInRoute: typeof AuthSignInRoute
+  OauthConsentRoute: typeof OauthConsentRoute
+  DotwellKnownOauthProtectedResourceMcpRoute: typeof DotwellKnownOauthProtectedResourceMcpRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
+  DotwellKnownOauthAuthorizationServerApiAuthRoute: typeof DotwellKnownOauthAuthorizationServerApiAuthRoute
+  DotwellKnownOpenidConfigurationApiAuthRoute: typeof DotwellKnownOpenidConfigurationApiAuthRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -144,11 +199,39 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthSignInRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/oauth/consent': {
+      id: '/oauth/consent'
+      path: '/oauth/consent'
+      fullPath: '/oauth/consent'
+      preLoaderRoute: typeof OauthConsentRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/.well-known/oauth-protected-resource/mcp': {
+      id: '/.well-known/oauth-protected-resource/mcp'
+      path: '/.well-known/oauth-protected-resource/mcp'
+      fullPath: '/.well-known/oauth-protected-resource/mcp'
+      preLoaderRoute: typeof DotwellKnownOauthProtectedResourceMcpRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/auth/$': {
       id: '/api/auth/$'
       path: '/api/auth/$'
       fullPath: '/api/auth/$'
       preLoaderRoute: typeof ApiAuthSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/.well-known/oauth-authorization-server/api/auth': {
+      id: '/.well-known/oauth-authorization-server/api/auth'
+      path: '/.well-known/oauth-authorization-server/api/auth'
+      fullPath: '/.well-known/oauth-authorization-server/api/auth'
+      preLoaderRoute: typeof DotwellKnownOauthAuthorizationServerApiAuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/.well-known/openid-configuration/api/auth': {
+      id: '/.well-known/openid-configuration/api/auth'
+      path: '/.well-known/openid-configuration/api/auth'
+      fullPath: '/.well-known/openid-configuration/api/auth'
+      preLoaderRoute: typeof DotwellKnownOpenidConfigurationApiAuthRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_app/spaces/$spaceSlug/': {
@@ -186,7 +269,14 @@ const rootRouteChildren: RootRouteChildren = {
   AppRoute: AppRouteWithChildren,
   LoginRoute: LoginRoute,
   AuthSignInRoute: AuthSignInRoute,
+  OauthConsentRoute: OauthConsentRoute,
+  DotwellKnownOauthProtectedResourceMcpRoute:
+    DotwellKnownOauthProtectedResourceMcpRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
+  DotwellKnownOauthAuthorizationServerApiAuthRoute:
+    DotwellKnownOauthAuthorizationServerApiAuthRoute,
+  DotwellKnownOpenidConfigurationApiAuthRoute:
+    DotwellKnownOpenidConfigurationApiAuthRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
