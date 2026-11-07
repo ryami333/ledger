@@ -7,7 +7,7 @@ begin;
 \ir helpers.psql
 \ir fixtures.psql
 
-select plan(7);
+select plan(8);
 
 -- Each table with created_by runs set_actor_on_insert('created_by'), and each
 -- table with updated_by runs set_actor_on_write('updated_by'), before insert
@@ -79,6 +79,19 @@ select is(
   (select updated_by from public.transactions where id = '40000000-0000-0000-0000-00000000000a'),
   '00000000-0000-0000-0000-00000000000b'::uuid,
   'update.transactions: updated_by is user B'
+);
+
+-- linked_members.user_id (PLAN.md, D16) uses set_actor_on_insert too.
+select tests.authenticate_as('00000000-0000-0000-0000-00000000000b');
+
+select public.set_linked_member(
+  '10000000-0000-0000-0000-00000000000b', '20000000-0000-0000-0000-0000000000b1');
+
+select is(
+  (select user_id from public.linked_members
+   where space_id = '10000000-0000-0000-0000-00000000000b'),
+  '00000000-0000-0000-0000-00000000000b'::uuid,
+  'insert.linked_members: user_id is user B'
 );
 
 select * from finish();

@@ -85,6 +85,50 @@ export type Database = {
           },
         ];
       };
+      linked_members: {
+        Row: {
+          created_at: string;
+          member_id: string;
+          space_id: string;
+          updated_at: string;
+          user_id: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          created_at?: string;
+          member_id: string;
+          space_id: string;
+          updated_at?: string;
+          user_id: string;
+        };
+        Update: {
+          created_at?: string;
+          member_id?: string;
+          space_id?: string;
+          updated_at?: string;
+          user_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "linked_members_member_fkey";
+            columns: ["space_id", "member_id"];
+            referencedRelation: "members";
+            referencedColumns: ["space_id", "id"];
+          },
+          {
+            foreignKeyName: "linked_members_space_id_fkey";
+            columns: ["space_id"];
+            referencedRelation: "spaces";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "linked_members_user_id_fkey";
+            columns: ["user_id"];
+            referencedRelation: "app_users";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       members: {
         Row: {
           archived_at: string | null;
@@ -399,6 +443,10 @@ export type Database = {
           p_transaction_date: string;
           p_transaction_id: string;
         };
+        Returns: string;
+      };
+      set_linked_member: {
+        Args: { p_member_id: string; p_space_id: string };
         Returns: string;
       };
     };

@@ -602,3 +602,27 @@ begin
   return v_count;
 end;
 $$;
+
+-- Replaces the linked member of the current user in a space (PLAN.md, D16).
+-- Give null as p_member_id to remove it. Returns the ID of the space.
+--
+-- The trigger linked_members_set_user_id sets user_id, and RLS lets a user
+-- delete only the rows of the user itself. A member that a different user
+-- selected gives the error unique_violation.
+CREATE OR REPLACE FUNCTION "public"."set_linked_member"("p_space_id" "uuid", "p_member_id" "uuid") RETURNS "uuid"
+    LANGUAGE "plpgsql" SECURITY INVOKER
+    SET "search_path" TO ''
+    AS $$
+begin
+  delete from public.linked_members
+  where linked_members.space_id = p_space_id
+    and linked_members.user_id = public.current_user_id();
+
+  if p_member_id is not null then
+    insert into public.linked_members (space_id, member_id)
+    values (p_space_id, p_member_id);
+  end if;
+
+  return p_space_id;
+end;
+$$;

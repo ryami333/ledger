@@ -49,6 +49,10 @@ grant delete on "public"."transactions" to authenticated;
 grant insert ("transaction_id", "space_id", "side", "member_id", "alias_id", "share_minor") on "public"."transaction_parties" to authenticated;
 grant delete on "public"."transaction_parties" to authenticated;
 
+-- No grant gives user_id: the trigger linked_members_set_user_id sets it.
+grant insert ("space_id", "member_id") on "public"."linked_members" to authenticated;
+grant delete on "public"."linked_members" to authenticated;
+
 -- better-auth owns the schema better_auth. No PostgREST role reads it. The
 -- view app_users reads it as its owner.
 revoke all on schema "better_auth" from public, anon, authenticated;
@@ -78,3 +82,5 @@ revoke execute on function "public"."save_transaction"("uuid", "uuid", "text", "
 grant execute on function "public"."save_transaction"("uuid", "uuid", "text", "text", bigint, "text", "text", "date", "jsonb", "jsonb") to authenticated;
 revoke execute on function "public"."import_transactions"("uuid", "jsonb", "jsonb") from public, anon;
 grant execute on function "public"."import_transactions"("uuid", "jsonb", "jsonb") to authenticated;
+revoke execute on function "public"."set_linked_member"("uuid", "uuid") from public, anon;
+grant execute on function "public"."set_linked_member"("uuid", "uuid") to authenticated;

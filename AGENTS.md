@@ -9,7 +9,7 @@ The space shows the balance of each member in plain English, for example "Barack
 ## Start here
 
 Read [`PLAN.md`](PLAN.md) before you start a task. It holds the architecture, the data model,
-the decisions (D1 to D14), and the phases. Update `PLAN.md` when a decision changes or a phase
+the decisions (D1 to D16), and the phases. Update `PLAN.md` when a decision changes or a phase
 is complete.
 
 The repository is new. Some files and commands in this document do not exist yet. They show
@@ -21,11 +21,15 @@ These terms have a specific meaning in this project. Use them with this meaning 
 comments, docs, and chat.
 
 - **User:** One row of `better_auth.users`. A person who can sign in with Pocket ID. A user
-  is not a member. Each user can read and change all spaces.
+  is not a member, but a user can have a linked member in each space. Each user can read and
+  change all spaces.
 - **Space:** One row of `spaces`. A group of members with a shared ledger, for example one
   trip or one household.
 - **Member:** One row of `members`. A name in one space, for example "Barack". A member has
-  no account and no link to a user.
+  no account.
+- **Linked member:** One row of `linked_members`. The member that one user is in one space,
+  for example "user mitch@… is Mitch in Shmitch". A user has zero or one linked member in each
+  space. A member is the linked member of zero or one user.
 - **Alias:** One row of `aliases`. A name for a set of members of one space, for example
   "Obamas' Shared Account" for Barack and Michelle.
 - **Transaction:** One row of `transactions`. One payment: a date, an amount in one currency,

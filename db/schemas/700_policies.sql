@@ -52,3 +52,11 @@ CREATE POLICY "transactions_delete_authenticated" ON "public"."transactions" FOR
 CREATE POLICY "transaction_parties_select_authenticated" ON "public"."transaction_parties" FOR SELECT TO "authenticated" USING (true);
 CREATE POLICY "transaction_parties_insert_authenticated" ON "public"."transaction_parties" FOR INSERT TO "authenticated" WITH CHECK (true);
 CREATE POLICY "transaction_parties_delete_authenticated" ON "public"."transaction_parties" FOR DELETE TO "authenticated" USING (true);
+
+-- linked_members (PLAN.md, D16). Each user reads all rows, so the settings
+-- show who selected a member. A user inserts and deletes only the rows of the
+-- user itself. There is no update: set_linked_member deletes, then inserts.
+
+CREATE POLICY "linked_members_select_authenticated" ON "public"."linked_members" FOR SELECT TO "authenticated" USING (true);
+CREATE POLICY "linked_members_insert_authenticated" ON "public"."linked_members" FOR INSERT TO "authenticated" WITH CHECK ("user_id" = "public"."current_user_id"());
+CREATE POLICY "linked_members_delete_authenticated" ON "public"."linked_members" FOR DELETE TO "authenticated" USING ("user_id" = "public"."current_user_id"());

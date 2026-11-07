@@ -24,7 +24,8 @@ select is_empty(
        and has_function_privilege('authenticated', p.oid, 'execute')
        and p.proname not in (
          'current_user_id', 'create_space', 'save_space_currencies',
-         'save_alias', 'save_transaction', 'import_transactions'
+         'save_alias', 'save_transaction', 'import_transactions',
+         'set_linked_member'
        ) $$,
   'authenticated has EXECUTE only on the listed functions in public'
 );

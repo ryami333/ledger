@@ -26,11 +26,15 @@ The space shows the balance of each member in plain English, for example "Barack
 Phase 0 copies this glossary into `AGENTS.md`.
 
 - **User:** One row of `better_auth.users`. A person who can sign in with Pocket ID. A user
-  is not a member. Each user can read and change all spaces.
+  is not a member, but a user can have a linked member in each space. Each user can read and
+  change all spaces.
 - **Space:** One row of `spaces`. A group of members with a shared ledger, for example one
   trip or one household.
 - **Member:** One row of `members`. A name in one space, for example "Barack". A member has
-  no account and no link to a user.
+  no account.
+- **Linked member:** One row of `linked_members`. The member that one user is in one space,
+  for example "user mitch@… is Mitch in Shmitch". A user has zero or one linked member in each
+  space. A member is the linked member of zero or one user.
 - **Alias:** One row of `aliases`. A name for a set of members of one space, for example
   "Obamas' Shared Account" for Barack and Michelle.
 - **Transaction:** One row of `transactions`. One payment: a date, an amount in one currency,
@@ -130,7 +134,7 @@ only one app and no worker, thus workspaces give no advantage. The folders `src/
   `apps/web/src/server/auth.ts` of stripclub to `src/server/auth.ts`.
 - The OIDC client of `ledger` in Pocket ID allows only one Pocket ID user group. Thus Pocket
   ID decides who has access. There is no email or password sign-in, and no invitation.
-- A user is not a member. No column links `better_auth.users` to `members`.
+- A user is not a member. A user can select a linked member in each space (D16).
 - Each user can read and change all spaces. The RLS policies allow each operation to the role
   `authenticated`, with no row condition. The role `anon` has no grant.
 - RLS stays on for each table. Reasons: the role `anon` gets nothing, the pgTAP tests check
@@ -491,6 +495,30 @@ The tool descriptions tell the client to call `get_space` first, and to ask the 
 name or the space is not clear.
 
 Logs: the MCP server logs the tool name, the client ID, the duration, and the status. It does not log the token, the arguments, or a title (core principle 6).
+
+### D16: Linked members
+
+A user tells an MCP client "Shan paid for dinner for me". The MCP server must know which member
+"me" is. Thus a user can select the member that the user is in each space.
+
+- `linked_members` holds one row for each user and space: `space_id`, `user_id`, `member_id`.
+  The primary key is `(space_id, user_id)`. A unique `(space_id, member_id)` lets only one user
+  select a member.
+- The trigger `set_actor_on_insert('user_id')` sets `user_id` from the JWT. The grants do not
+  give `user_id` to the client. Thus a user can link only the user itself.
+- RLS: each user reads all rows, so the settings show who selected a member. A user inserts
+  and deletes only the rows of the user itself.
+- `set_linked_member(p_space_id, p_member_id)` replaces the linked member of the current user
+  in one database transaction. `null` removes it. It returns the ID of the space.
+- The composite foreign key `(space_id, member_id)` keeps the member in the space. A delete of
+  the member, the space, or the user deletes the row (`on delete cascade`). A linked member
+  does not stop the delete of a member.
+- The Members section of the settings has a "This Is Me" button for each member, and shows
+  the name of the user of a linked member.
+- `resolvePartyNames` gives the linked member of the current user for "me", "I", "myself",
+  and "you" (D15). A member or an alias with that name comes first. With no linked member, the
+  tool gives an error that tells the client to ask the user. `list_spaces` and `get_space`
+  give `you`: the name of the linked member of the current user, or `null`.
 
 ## Data model
 
@@ -1029,7 +1057,7 @@ Open questions:
 - CSV export of a space.
 - Archive a space.
 - Access for some users only to some spaces (new RLS policies, D3).
-- A link from a user to a member, for "you owe" texts.
+- "You owe" texts in the UI, from the linked member (D16).
 - A SQL view for the balances, if a space gets too large for D10.
 
 ## Decided questions
