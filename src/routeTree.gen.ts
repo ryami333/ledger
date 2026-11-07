@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as McpRouteImport } from './routes/mcp'
 import { Route as AppIndexRouteImport } from './routes/_app.index'
 import { Route as AuthSignInRouteImport } from './routes/auth.sign-in'
 import { Route as OauthConsentRouteImport } from './routes/oauth.consent'
@@ -28,6 +29,11 @@ const AppRoute = AppRouteImport.update({
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const McpRoute = McpRouteImport.update({
+  id: '/mcp',
+  path: '/mcp',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AppIndexRoute = AppIndexRouteImport.update({
@@ -83,6 +89,7 @@ const AppSpacesSpaceSlugSettingsRoute =
 export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
   '/login': typeof LoginRoute
+  '/mcp': typeof McpRoute
   '/auth/sign-in': typeof AuthSignInRoute
   '/oauth/consent': typeof OauthConsentRoute
   '/.well-known/oauth-protected-resource/mcp': typeof DotwellKnownOauthProtectedResourceMcpRoute
@@ -94,6 +101,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/login': typeof LoginRoute
+  '/mcp': typeof McpRoute
   '/auth/sign-in': typeof AuthSignInRoute
   '/oauth/consent': typeof OauthConsentRoute
   '/': typeof AppIndexRoute
@@ -108,6 +116,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_app': typeof AppRouteWithChildren
   '/login': typeof LoginRoute
+  '/mcp': typeof McpRoute
   '/auth/sign-in': typeof AuthSignInRoute
   '/oauth/consent': typeof OauthConsentRoute
   '/_app/': typeof AppIndexRoute
@@ -123,6 +132,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/login'
+    | '/mcp'
     | '/auth/sign-in'
     | '/oauth/consent'
     | '/.well-known/oauth-protected-resource/mcp'
@@ -134,6 +144,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/login'
+    | '/mcp'
     | '/auth/sign-in'
     | '/oauth/consent'
     | '/'
@@ -147,6 +158,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/_app'
     | '/login'
+    | '/mcp'
     | '/auth/sign-in'
     | '/oauth/consent'
     | '/_app/'
@@ -161,6 +173,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   AppRoute: typeof AppRouteWithChildren
   LoginRoute: typeof LoginRoute
+  McpRoute: typeof McpRoute
   AuthSignInRoute: typeof AuthSignInRoute
   OauthConsentRoute: typeof OauthConsentRoute
   DotwellKnownOauthProtectedResourceMcpRoute: typeof DotwellKnownOauthProtectedResourceMcpRoute
@@ -183,6 +196,13 @@ declare module '@tanstack/react-router' {
       path: '/login'
       fullPath: '/login'
       preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/mcp': {
+      id: '/mcp'
+      path: '/mcp'
+      fullPath: '/mcp'
+      preLoaderRoute: typeof McpRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_app/': {
@@ -268,6 +288,7 @@ const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
 const rootRouteChildren: RootRouteChildren = {
   AppRoute: AppRouteWithChildren,
   LoginRoute: LoginRoute,
+  McpRoute: McpRoute,
   AuthSignInRoute: AuthSignInRoute,
   OauthConsentRoute: OauthConsentRoute,
   DotwellKnownOauthProtectedResourceMcpRoute:
