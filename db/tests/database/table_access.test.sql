@@ -9,7 +9,7 @@ begin;
 \ir helpers.psql
 \ir fixtures.psql
 
-select plan(20);
+select plan(21);
 
 -- anon
 
@@ -32,6 +32,23 @@ select ok(
   not has_schema_privilege('anon', 'better_auth', 'usage')
   and not has_schema_privilege('authenticated', 'better_auth', 'usage'),
   'anon and authenticated have no USAGE on the schema better_auth'
+);
+
+-- The tables of the sign-in and of the OAuth server for the MCP clients
+-- (PLAN.md, D3 and D15) have RLS on, and give no privilege to a PostgREST
+-- role.
+select is_empty(
+  $$ select c.relname
+     from pg_class c
+     join pg_namespace n on n.oid = c.relnamespace
+     where n.nspname = 'better_auth'
+       and c.relkind in ('r', 'p')
+       and (
+         not c.relrowsecurity
+         or has_table_privilege('anon', c.oid, 'select, insert, update, delete')
+         or has_table_privilege('authenticated', c.oid, 'select, insert, update, delete')
+       ) $$,
+  'each table in better_auth has RLS on and no privilege for anon or authenticated'
 );
 
 select tests.authenticate_as_anon();
