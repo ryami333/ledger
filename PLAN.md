@@ -447,14 +447,14 @@ Shared code:
 
 Tools:
 
-| Tool                 | Scope          | Annotation        | Does                                                                                                                   |
-| -------------------- | -------------- | ----------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| `list_spaces`        | `ledger:read`  | `readOnlyHint`    | Gives the slug, title, default currency, and member names of each space.                                               |
-| `get_space`          | `ledger:read`  | `readOnlyHint`    | Gives the members, the aliases with their members, the space currencies, the balances, and today in `APP_TIME_ZONE`.   |
-| `list_transactions`  | `ledger:read`  | `readOnlyHint`    | Gives the transactions of a space, with the filters of `filterTransactions`, newest first, 20 by default, 100 at most. |
-| `add_transaction`    | `ledger:write` | none              | Adds one transaction. See below.                                                                                       |
-| `update_transaction` | `ledger:write` | `idempotentHint`  | Changes one transaction. The input has the same fields as `add_transaction`, all optional.                             |
-| `delete_transaction` | `ledger:write` | `destructiveHint` | Deletes one transaction.                                                                                               |
+| Tool                 | Scope          | Annotation        | Does                                                                                                                                     |
+| -------------------- | -------------- | ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| `list_spaces`        | `ledger:read`  | `readOnlyHint`    | Gives the slug, title, description, default currency, and member names of each space. The description helps the client select the space. |
+| `get_space`          | `ledger:read`  | `readOnlyHint`    | Gives the members, the aliases with their members, the space currencies, the balances, and today in `APP_TIME_ZONE`.                     |
+| `list_transactions`  | `ledger:read`  | `readOnlyHint`    | Gives the transactions of a space, with the filters of `filterTransactions`, newest first, 20 by default, 100 at most.                   |
+| `add_transaction`    | `ledger:write` | none              | Adds one transaction. See below.                                                                                                         |
+| `update_transaction` | `ledger:write` | `idempotentHint`  | Changes one transaction. The input has the same fields as `add_transaction`, all optional.                                               |
+| `delete_transaction` | `ledger:write` | `destructiveHint` | Deletes one transaction.                                                                                                                 |
 
 The input of `add_transaction`:
 

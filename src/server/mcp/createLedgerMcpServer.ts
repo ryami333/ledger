@@ -42,7 +42,7 @@ import { Temporal } from "temporal-polyfill";
 const serverInstructions = `ledger is a shared expense tracker. A space is a group with a shared ledger, for example a trip or a household. A member is a name in a space. An alias is a name for a set of members, for example a shared account.
 
 To record a payment:
-1. Call list_spaces, then get_space, to get the names of the members and aliases, the currencies, and today. When the user names no space, use the space with "default": true. With no default space and two or more spaces, ask the user, and offer to call set_default_space.
+1. Call list_spaces, then get_space, to get the names of the members and aliases, the currencies, and today. When the user names no space, use the space with "default": true. But when the title or the description of a different space clearly fits the payment (for example a trip and a payment on that trip), ask the user which space they mean. With no default space and two or more spaces, ask the user, and offer to call set_default_space.
 2. Call add_transaction with the names as get_space gives them. Put each party that got a part of the value in paid_for, the payer too when the payer got a part. Example: "Barack paid 90 euros for dinner with Donald" gives paid_by ["Barack"] and paid_for ["Barack", "Donald"].
 3. Tell the user the result line and the link.
 
@@ -148,7 +148,7 @@ export const createLedgerMcpServer = ({
     const { data, error } = await db
       .from("spaces")
       .select(
-        "slug, title, space_currencies(currency, is_default), members(id, name, archived_at), linked_members(user_id, member_id), default_spaces(user_id)",
+        "slug, title, description, space_currencies(currency, is_default), members(id, name, archived_at), linked_members(user_id, member_id), default_spaces(user_id)",
       )
       .order("created_at", { ascending: false });
     if (error) {
@@ -285,7 +285,7 @@ export const createLedgerMcpServer = ({
     {
       title: "List Spaces",
       description:
-        "Lists the spaces of ledger: the slug, the title, default (true for the default space of the user), the default currency, the names of the members, and you: the member that the user is, or null.",
+        "Lists the spaces of ledger: the slug, the title, the description, default (true for the default space of the user), the default currency, the names of the members, and you: the member that the user is, or null.",
       inputSchema: listSpacesInputSchema,
       annotations: { readOnlyHint: true },
     },
@@ -297,6 +297,7 @@ export const createLedgerMcpServer = ({
           (await loadSpaceList()).map((space) => ({
             slug: space.slug,
             title: space.title,
+            description: space.description,
             default: space.isDefault,
             default_currency:
               space.space_currencies.find(
