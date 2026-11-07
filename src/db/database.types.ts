@@ -85,6 +85,41 @@ export type Database = {
           },
         ];
       };
+      default_spaces: {
+        Row: {
+          created_at: string;
+          space_id: string;
+          updated_at: string;
+          user_id: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          created_at?: string;
+          space_id: string;
+          updated_at?: string;
+          user_id: string;
+        };
+        Update: {
+          created_at?: string;
+          space_id?: string;
+          updated_at?: string;
+          user_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "default_spaces_space_id_fkey";
+            columns: ["space_id"];
+            referencedRelation: "spaces";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "default_spaces_user_id_fkey";
+            columns: ["user_id"];
+            referencedRelation: "app_users";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       linked_members: {
         Row: {
           created_at: string;
@@ -445,6 +480,7 @@ export type Database = {
         };
         Returns: string;
       };
+      set_default_space: { Args: { p_space_id: string }; Returns: string };
       set_linked_member: {
         Args: { p_member_id: string; p_space_id: string };
         Returns: string;

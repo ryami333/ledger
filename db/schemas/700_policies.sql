@@ -60,3 +60,11 @@ CREATE POLICY "transaction_parties_delete_authenticated" ON "public"."transactio
 CREATE POLICY "linked_members_select_authenticated" ON "public"."linked_members" FOR SELECT TO "authenticated" USING (true);
 CREATE POLICY "linked_members_insert_authenticated" ON "public"."linked_members" FOR INSERT TO "authenticated" WITH CHECK ("user_id" = "public"."current_user_id"());
 CREATE POLICY "linked_members_delete_authenticated" ON "public"."linked_members" FOR DELETE TO "authenticated" USING ("user_id" = "public"."current_user_id"());
+
+-- default_spaces (PLAN.md, D17). A user reads, inserts, and deletes only the
+-- row of the user itself. There is no update: set_default_space deletes, then
+-- inserts.
+
+CREATE POLICY "default_spaces_select_authenticated" ON "public"."default_spaces" FOR SELECT TO "authenticated" USING ("user_id" = "public"."current_user_id"());
+CREATE POLICY "default_spaces_insert_authenticated" ON "public"."default_spaces" FOR INSERT TO "authenticated" WITH CHECK ("user_id" = "public"."current_user_id"());
+CREATE POLICY "default_spaces_delete_authenticated" ON "public"."default_spaces" FOR DELETE TO "authenticated" USING ("user_id" = "public"."current_user_id"());

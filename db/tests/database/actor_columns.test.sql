@@ -7,7 +7,7 @@ begin;
 \ir helpers.psql
 \ir fixtures.psql
 
-select plan(8);
+select plan(9);
 
 -- Each table with created_by runs set_actor_on_insert('created_by'), and each
 -- table with updated_by runs set_actor_on_write('updated_by'), before insert
@@ -92,6 +92,15 @@ select is(
    where space_id = '10000000-0000-0000-0000-00000000000b'),
   '00000000-0000-0000-0000-00000000000b'::uuid,
   'insert.linked_members: user_id is user B'
+);
+
+-- default_spaces.user_id (PLAN.md, D17) uses set_actor_on_insert too.
+select public.set_default_space('10000000-0000-0000-0000-00000000000b');
+
+select is(
+  (select user_id from public.default_spaces),
+  '00000000-0000-0000-0000-00000000000b'::uuid,
+  'insert.default_spaces: user_id is user B'
 );
 
 select * from finish();

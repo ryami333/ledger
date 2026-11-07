@@ -25,7 +25,7 @@ select is_empty(
        and p.proname not in (
          'current_user_id', 'create_space', 'save_space_currencies',
          'save_alias', 'save_transaction', 'import_transactions',
-         'set_linked_member'
+         'set_linked_member', 'set_default_space'
        ) $$,
   'authenticated has EXECUTE only on the listed functions in public'
 );

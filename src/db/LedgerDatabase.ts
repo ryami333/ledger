@@ -21,13 +21,18 @@ type WithNullableArgs<
 /**
  * The generated `Database` types, with the nullable arguments of the
  * functions of D9: `p_description`, `p_alias_id`, `p_transaction_id`, and
- * `p_rate`, and `p_member_id` of `set_linked_member` (D16).
+ * `p_rate`, `p_member_id` of `set_linked_member` (D16), and `p_space_id` of
+ * `set_default_space` (D17).
  */
 export type LedgerDatabase = Omit<Database, "public"> & {
   public: Omit<GeneratedPublic, "Functions"> & {
     Functions: Omit<
       GeneratedFunctions,
-      "create_space" | "save_alias" | "save_transaction" | "set_linked_member"
+      | "create_space"
+      | "save_alias"
+      | "save_transaction"
+      | "set_linked_member"
+      | "set_default_space"
     > & {
       create_space: WithNullableArgs<"create_space", "p_description">;
       save_alias: WithNullableArgs<"save_alias", "p_alias_id">;
@@ -36,6 +41,7 @@ export type LedgerDatabase = Omit<Database, "public"> & {
         "p_transaction_id" | "p_description" | "p_rate"
       >;
       set_linked_member: WithNullableArgs<"set_linked_member", "p_member_id">;
+      set_default_space: WithNullableArgs<"set_default_space", "p_space_id">;
     };
   };
 };

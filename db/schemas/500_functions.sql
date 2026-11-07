@@ -626,3 +626,22 @@ begin
   return p_space_id;
 end;
 $$;
+
+-- Replaces the default space of the current user (PLAN.md, D17). Give null
+-- as p_space_id to remove it. Returns the ID of the current user.
+CREATE OR REPLACE FUNCTION "public"."set_default_space"("p_space_id" "uuid") RETURNS "uuid"
+    LANGUAGE "plpgsql" SECURITY INVOKER
+    SET "search_path" TO ''
+    AS $$
+begin
+  delete from public.default_spaces
+  where default_spaces.user_id = public.current_user_id();
+
+  if p_space_id is not null then
+    insert into public.default_spaces (space_id)
+    values (p_space_id);
+  end if;
+
+  return public.current_user_id();
+end;
+$$;

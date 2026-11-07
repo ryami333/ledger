@@ -35,6 +35,9 @@ Phase 0 copies this glossary into `AGENTS.md`.
 - **Linked member:** One row of `linked_members`. The member that one user is in one space,
   for example "user mitch@… is Mitch in Shmitch". A user has zero or one linked member in each
   space. A member is the linked member of zero or one user.
+- **Default space:** One row of `default_spaces`. The space that one user selects for new
+  transactions from an MCP client when the user names no space. A user has zero or one
+  default space.
 - **Alias:** One row of `aliases`. A name for a set of members of one space, for example
   "Obamas' Shared Account" for Barack and Michelle.
 - **Transaction:** One row of `transactions`. One payment: a date, an amount in one currency,
@@ -519,6 +522,24 @@ A user tells an MCP client "Shan paid for dinner for me". The MCP server must kn
   and "you" (D15). A member or an alias with that name comes first. With no linked member, the
   tool gives an error that tells the client to ask the user. `list_spaces` and `get_space`
   give `you`: the name of the linked member of the current user, or `null`.
+- The MCP tool `claim_space_member` stores the linked member, when the user tells the client
+  which member the user is. Thus the client asks only one time for each space.
+
+### D17: Default spaces
+
+A user tells an MCP client "I paid 20 for lunch" and names no space. With two or more spaces,
+the MCP server must know which space the user means. Thus a user can select a default space.
+
+- `default_spaces` holds one row for each user: `user_id` (the primary key) and `space_id`.
+- The trigger `set_actor_on_insert('user_id')` sets `user_id` from the JWT. RLS lets a user
+  read, insert, and delete only the row of the user itself.
+- `set_default_space(p_space_id)` replaces the default space of the current user. `null`
+  removes it. It returns the ID of the user. A delete of the space or the user deletes the row.
+- The settings of a space have a "Make Default" button, and "Remove Default" for the default
+  space. The MCP tool `set_default_space` does the same, when the user tells the client.
+- `list_spaces` and `get_space` give `default: true` for the default space of the user. A tool
+  call with no `space` uses the default space, then the only space. Otherwise the tool gives
+  an error that tells the client to ask the user.
 
 ## Data model
 

@@ -19,6 +19,9 @@ CREATE OR REPLACE TRIGGER "alias_members_set_updated_at" BEFORE INSERT OR UPDATE
 CREATE OR REPLACE TRIGGER "linked_members_set_created_at" BEFORE INSERT OR UPDATE ON "public"."linked_members" FOR EACH ROW EXECUTE FUNCTION "public"."set_created_at"();
 CREATE OR REPLACE TRIGGER "linked_members_set_updated_at" BEFORE INSERT OR UPDATE ON "public"."linked_members" FOR EACH ROW EXECUTE FUNCTION "public"."set_updated_at"();
 
+CREATE OR REPLACE TRIGGER "default_spaces_set_created_at" BEFORE INSERT OR UPDATE ON "public"."default_spaces" FOR EACH ROW EXECUTE FUNCTION "public"."set_created_at"();
+CREATE OR REPLACE TRIGGER "default_spaces_set_updated_at" BEFORE INSERT OR UPDATE ON "public"."default_spaces" FOR EACH ROW EXECUTE FUNCTION "public"."set_updated_at"();
+
 CREATE OR REPLACE TRIGGER "transactions_set_created_at" BEFORE INSERT OR UPDATE ON "public"."transactions" FOR EACH ROW EXECUTE FUNCTION "public"."set_created_at"();
 CREATE OR REPLACE TRIGGER "transactions_set_updated_at" BEFORE INSERT OR UPDATE ON "public"."transactions" FOR EACH ROW EXECUTE FUNCTION "public"."set_updated_at"();
 
@@ -34,8 +37,9 @@ CREATE OR REPLACE TRIGGER "spaces_set_updated_by" BEFORE INSERT OR UPDATE ON "pu
 CREATE OR REPLACE TRIGGER "transactions_set_created_by" BEFORE INSERT OR UPDATE ON "public"."transactions" FOR EACH ROW EXECUTE FUNCTION "public"."set_actor_on_insert"('created_by');
 CREATE OR REPLACE TRIGGER "transactions_set_updated_by" BEFORE INSERT OR UPDATE ON "public"."transactions" FOR EACH ROW EXECUTE FUNCTION "public"."set_actor_on_write"('updated_by');
 
--- The user of a linked member (PLAN.md, D16): the user of the request. An
--- update keeps the old value.
+-- The user of a linked member (PLAN.md, D16) and of a default space (D17):
+-- the user of the request. An update keeps the old value.
+CREATE OR REPLACE TRIGGER "default_spaces_set_user_id" BEFORE INSERT OR UPDATE ON "public"."default_spaces" FOR EACH ROW EXECUTE FUNCTION "public"."set_actor_on_insert"('user_id');
 CREATE OR REPLACE TRIGGER "linked_members_set_user_id" BEFORE INSERT OR UPDATE ON "public"."linked_members" FOR EACH ROW EXECUTE FUNCTION "public"."set_actor_on_insert"('user_id');
 
 -- The deferred constraint triggers check the rules that need more than one

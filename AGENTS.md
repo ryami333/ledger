@@ -9,7 +9,7 @@ The space shows the balance of each member in plain English, for example "Barack
 ## Start here
 
 Read [`PLAN.md`](PLAN.md) before you start a task. It holds the architecture, the data model,
-the decisions (D1 to D16), and the phases. Update `PLAN.md` when a decision changes or a phase
+the decisions (D1 to D17), and the phases. Update `PLAN.md` when a decision changes or a phase
 is complete.
 
 The repository is new. Some files and commands in this document do not exist yet. They show
@@ -30,6 +30,9 @@ comments, docs, and chat.
 - **Linked member:** One row of `linked_members`. The member that one user is in one space,
   for example "user mitch@… is Mitch in Shmitch". A user has zero or one linked member in each
   space. A member is the linked member of zero or one user.
+- **Default space:** One row of `default_spaces`. The space that one user selects for new
+  transactions from an MCP client when the user names no space. A user has zero or one
+  default space.
 - **Alias:** One row of `aliases`. A name for a set of members of one space, for example
   "Obamas' Shared Account" for Barack and Michelle.
 - **Transaction:** One row of `transactions`. One payment: a date, an amount in one currency,
