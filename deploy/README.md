@@ -102,6 +102,34 @@ Add this rule to `cloudflared/config.yml`, before the catch-all entry:
 
 Only `ledger-web` joins `cloudflared-net`. Other stacks cannot reach PostgREST or Postgres.
 
+## Claude (MCP server)
+
+`ledger` has an MCP server at `https://ledger.mitchryan.org/mcp` (PLAN.md, D15). The Claude
+apps call it from Anthropic's addresses (`160.79.104.0/21`). Thus these paths must be
+public, with no Cloudflare Access rule and no WAF challenge:
+
+- `/mcp`
+- `/.well-known/*`
+- `/api/auth/oauth2/*` and `/api/auth/jwks`
+
+To connect claude.ai, Claude Desktop, and Claude mobile:
+
+1. In claude.ai, open **Settings**, then **Connectors**, then **Add custom connector**.
+2. Enter the name `ledger` and the URL `https://ledger.mitchryan.org/mcp`. Leave the OAuth
+   fields empty.
+3. Sign in with Pocket ID, then select **Allow** on the consent page of `ledger`.
+
+The connector is then in each Claude app of the account.
+
+To connect Claude Code, run this command, then run `/mcp` in Claude Code to sign in:
+
+```sh
+claude mcp add --transport http ledger https://ledger.mitchryan.org/mcp
+```
+
+No new secret is necessary. better-auth makes the signing key of the access tokens on the
+first request, and keeps it in `better_auth.jwks`, encrypted with `BETTER_AUTH_SECRET`.
+
 ## Images and releases
 
 `ledger-web` uses the image `ghcr.io/ryami333/ledger-web`. `yarn release` in the repository

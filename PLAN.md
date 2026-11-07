@@ -377,8 +377,9 @@ Transport:
 
 - The MCP server is a route of the web app: `POST <APP_URL>/mcp`, Streamable HTTP. There is no
   second process and no second image (D12).
-- Use `createMcpHandler` of `@modelcontextprotocol/server` v2 (MCP 2026-07-28, no protocol
-  sessions). Each request is independent, thus the server keeps no state.
+- Use `createMcpHandler` of `@modelcontextprotocol/server` v2, with the default
+  `legacy: "stateless"`. It serves MCP 2026-07-28 and the 2025 protocol, with no protocol
+  sessions. Each request is independent, thus the server keeps no state.
 - Expose only `POST`. The route answers `GET` and `DELETE` with 405.
 
 Authorization:
@@ -387,12 +388,15 @@ Authorization:
   of `@better-auth/mcp`, with the plugin `jwt()` of better-auth. `mcp()` is built on
   `@better-auth/oauth-provider`. It serves the protected resource metadata (RFC 9728) and
   binds each access token to the resource `<APP_URL>/mcp`.
-- Pocket ID stays the only sign-in (D3). The authorize endpoint sends a user with no session
-  to `/login`. The login then continues the authorization. Thus Pocket ID still decides who
-  has access.
+- Pocket ID stays the only sign-in (D3). The login page of the OAuth server is
+  `/auth/sign-in`. The authorize endpoint sends a user with no session there with a signed
+  query. The route gives the query to better-auth as `oauth_query` and starts the Pocket ID
+  sign-in. After the callback, better-auth continues the authorization. Thus Pocket ID still
+  decides who has access.
 - The clients are the Claude apps: claude.ai, Claude Desktop, Claude mobile, and Claude Code.
   Claude identifies itself with a Client ID Metadata Document (`@better-auth/cimd`, profile
-  `mcp-2026-07-28`). Dynamic Client Registration stays off.
+  `mcp-2026-07-28`). Dynamic Client Registration stays off. `isClaudeClientMetadataUrl` lets
+  the plugin fetch a document only from `https://claude.ai` or `https://claude.com`.
 - Claude uses CIMD only when the authorization server metadata has
   `"client_id_metadata_document_supported": true` and `"none"` in
   `token_endpoint_auth_methods_supported`. Otherwise it tries DCR.
@@ -417,7 +421,11 @@ Authorization:
   `<APP_URL>/mcp`. With `ledger` as the authorization server, a client connects with no
   manual setup.
 - `requireMcpAuth` verifies each access token (signature, issuer, audience, expiry) against
-  the JWKS of `ledger`. The claim `sub` is the user ID.
+  the JWKS of `ledger`, `<APP_URL>/api/auth/jwks`. The claim `sub` is the user ID. The issuer
+  is `<APP_URL>/api/auth`, thus the metadata routes are
+  `/.well-known/oauth-authorization-server/api/auth` and
+  `/.well-known/openid-configuration/api/auth`.
+- The grant types are `authorization_code` and `refresh_token` only.
 - Each tool reads and writes with `createUserPostgrestClient({ userId: sub })`. Thus RLS and
   the actor triggers apply as in the web app, and `created_by` is the user of the token.
 
@@ -432,18 +440,18 @@ Shared code:
 
 Tools:
 
-| Tool                 | Scope          | Annotation        | Does                                                                                                                 |
-| -------------------- | -------------- | ----------------- | -------------------------------------------------------------------------------------------------------------------- |
-| `list_spaces`        | `ledger:read`  | `readOnlyHint`    | Gives the slug, title, default currency, and member names of each space.                                             |
-| `get_space`          | `ledger:read`  | `readOnlyHint`    | Gives the members, the aliases with their members, the space currencies, the balances, and today in `APP_TIME_ZONE`. |
-| `list_transactions`  | `ledger:read`  | `readOnlyHint`    | Gives the transactions of a space, with the filters of `filterTransactions`, newest first, 50 at most.               |
-| `add_transaction`    | `ledger:write` | none              | Adds one transaction. See below.                                                                                     |
-| `update_transaction` | `ledger:write` | `idempotentHint`  | Changes one transaction. The input has the same fields as `add_transaction`, all optional.                           |
-| `delete_transaction` | `ledger:write` | `destructiveHint` | Deletes one transaction.                                                                                             |
+| Tool                 | Scope          | Annotation        | Does                                                                                                                   |
+| -------------------- | -------------- | ----------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| `list_spaces`        | `ledger:read`  | `readOnlyHint`    | Gives the slug, title, default currency, and member names of each space.                                               |
+| `get_space`          | `ledger:read`  | `readOnlyHint`    | Gives the members, the aliases with their members, the space currencies, the balances, and today in `APP_TIME_ZONE`.   |
+| `list_transactions`  | `ledger:read`  | `readOnlyHint`    | Gives the transactions of a space, with the filters of `filterTransactions`, newest first, 20 by default, 100 at most. |
+| `add_transaction`    | `ledger:write` | none              | Adds one transaction. See below.                                                                                       |
+| `update_transaction` | `ledger:write` | `idempotentHint`  | Changes one transaction. The input has the same fields as `add_transaction`, all optional.                             |
+| `delete_transaction` | `ledger:write` | `destructiveHint` | Deletes one transaction.                                                                                               |
 
 The input of `add_transaction`:
 
-- `space`: the slug of the space. With only one space, the slug is optional.
+- `space`: the slug or the title of the space. With only one space, it is optional.
 - `title`, and an optional `description`.
 - `amount`: a decimal text, for example `"90"` or `"90.00"`. Not a JSON number, because a
   number can lose digits (D4). `parseAmount` reads it.
@@ -451,8 +459,10 @@ The input of `add_transaction`:
 - `date`: `YYYY-MM-DD`. The default is today in `APP_TIME_ZONE` (D11).
 - `paid_by` and `paid_for`: arrays of names of members or aliases. `"everyone"` gives each
   member that is not archived (D6).
-- `paid_by_shares` and `paid_for_shares`: optional decimal texts, one for each party, for a
-  custom split (D6).
+- `paid_by_split` and `paid_for_split`: an optional custom split (D6), `{ mode, values }`.
+  `mode` is `"amount"` or `"percent"`. `values` has one decimal text for each party, the last
+  party too. The values must sum to the amount, or to 100. A side with `"everyone"` cannot
+  have a custom split.
 - `allow_duplicate`: optional, `false` by default.
 
 Rules of `add_transaction`:
@@ -463,17 +473,24 @@ Rules of `add_transaction`:
 - A transaction with the same date, title, amount, and currency gives an error, unless
   `allow_duplicate` is `true`. Reason: a client can send the same call two times.
 - The rate is the rate of the space currency (D5). The tool does not take a rate.
-- The result gives the ID, the list line (`describeTransaction`), the preview line
-  (`describeTransactionPreview`), the new balances (`describeBalance`), and the link
+- The result gives the ID, the amounts, the names of the parties with their custom shares,
+  the list line (`describeTransaction`), the new balances (`describeBalance`), and the link
   `<APP_URL>/spaces/<slug>?transaction=<id>`.
 - An error result has `isError: true` and a text from `chooseDatabaseErrorMessage`, not the
   text of the Postgres error.
 
+Rules of `update_transaction`:
+
+- A field that the call leaves out keeps its value. The transaction keeps its rate, unless
+  the currency changes.
+- A new list of names for a side resets the side to an equal split, as in the form (D6).
+- When the amount or the currency changes, a side with a custom split needs a new split, or
+  `null` for an equal split.
+
 The tool descriptions tell the client to call `get_space` first, and to ask the user when a
 name or the space is not clear.
 
-Logs: the MCP route logs the tool name, the space ID, the client ID, the duration, and the
-status. It does not log the token, the arguments, or a title (core principle 6).
+Logs: the MCP server logs the tool name, the client ID, the duration, and the status. It does not log the token, the arguments, or a title (core principle 6).
 
 ## Data model
 
@@ -946,69 +963,51 @@ Notes:
 
 See D15.
 
-Step 1, spike (no commit):
+- [x] Packages: `@better-auth/mcp`, `@better-auth/cimd`, `@better-auth/oauth-provider`, and
+      `@modelcontextprotocol/server`. better-auth is now 1.7.18, the version of the plugins.
+- [x] `0008_mcp_oauth.sql`: `jwks` and the `oauth_*` tables in `better_auth`, with RLS on.
+      A pgTAP test makes sure that each table in `better_auth` gives nothing to `anon` and
+      `authenticated`.
+- [x] `auth.ts`: `jwt()`, `mcp()`, and `cimd()`. `snakeCaseModel` maps each field to its
+      snake_case column. `getMigrations` of better-auth finds no difference.
+- [x] Metadata routes under `/.well-known`, the login through `/auth/sign-in`, and
+      `OAuthConsentView`.
+- [x] `loadSpace`, `saveTransaction`, and `deleteTransaction` in `src/server`.
+- [x] `src/core/mcp` with unit tests, `createLedgerMcpServer`, and the route `/mcp`.
+- [x] Test the OAuth flow and the tools against the local stack (see the notes).
+- [ ] Connect Claude Code to the local server with a real Pocket ID sign-in:
+      `claude mcp add --transport http ledger http://127.0.0.1:3001/mcp`.
+- [ ] Release. Then connect Claude (web, Desktop, mobile) as a custom connector to
+      `https://ledger.mitchryan.org/mcp`.
 
-- [ ] Install `@better-auth/mcp`, `@better-auth/cimd`, and `@modelcontextprotocol/server` at
-      the versions of better-auth. Make the plugins work against the local stack.
-- [ ] Find the tables and the columns that `jwt()`, `mcp()`, and `cimd()` need. Read
-      `getMigrations` of better-auth, as for the other tables in `090_better_auth.sql`.
-- [ ] Connect Claude Code (`claude mcp add --transport http ledger http://127.0.0.1:3001/mcp`).
-      Make sure that it can do the OAuth flow with CIMD and with MCP 2026-07-28. If it
-      cannot, write the result here and decide on `legacy` support.
+Notes:
 
-Step 2, authorization server:
-
-- [ ] Add the new tables to `090_better_auth.sql` (snake_case, with the field mapping in
-      `auth.ts`). Run `yarn db:diff mcp_oauth`. Add the `Rollback:` note.
-- [ ] pgTAP: `anon` and `authenticated` get nothing on the new tables.
-- [ ] `auth.ts`: add `jwt()`, `mcp()`, and `cimd()` before `tanstackStartCookies()`. Set
-      `loginPage: "/login"`, `consentPage: "/oauth/consent"`, `resource: <APP_URL>/mcp`,
-      and the two scopes of D15.
-- [ ] Routes for the metadata at the root of the host:
-      `/.well-known/oauth-authorization-server` (`oauthProviderAuthServerMetadata`),
-      `/.well-known/openid-configuration` (`oauthProviderOpenIdConfigMetadata`), and
-      `/.well-known/oauth-protected-resource/mcp`. better-auth has `basePath` `/api/auth`,
-      thus the routes do not exist without this step.
-- [ ] `/login` and `/auth/sign-in` keep the signed authorize query in `next`. After the
-      Pocket ID callback, the browser goes back to the authorize endpoint.
-      `resolveRedirectPath` must accept this path, and still refuse an open redirect. Add
-      unit tests.
-- [ ] `OAuthConsentView`: the client name, its URL, the scopes in plain words, "Allow" and
-      "Deny".
-
-Step 3, shared code:
-
-- [ ] Move the body of `getSpaceServerFn` into `src/server/loadSpace.ts`. Move the body of
-      `saveTransactionServerFn` and `deleteTransactionServerFn` into `src/server/`. The
-      server functions call them. The web app has no change of behavior.
-
-Step 4, tools:
-
-- [ ] `src/core/mcp/`: `resolvePartyNames`, the Zod input schemas, `buildTransactionInput`
-      (tool input to the input of `transactionFormSchema`), `findDuplicateTransaction`, and
-      the result texts. Unit tests for each, with the seed names (Barack, Michelle, Donald,
-      Melania, Obamas' Shared Account).
-- [ ] `src/server/mcp/createLedgerMcpServer.ts`: register the tools of D15 with the user
-      client of the token and the scopes of the token.
-- [ ] `src/routes/mcp.ts`: `POST` through `requireMcpAuth` and `createMcpHandler`
-      (`legacy: "reject"`). `GET` and `DELETE` give 405.
-
-Step 5, test and deploy:
-
-- [ ] Test by hand in Claude Code on the seed space: "Barack just paid 90 euros for dinner
-      with Donald" gives one transaction of €90.00, paid by Barack, for Barack and Donald,
-      today. The balances change by €45.00. A second identical call gives the duplicate
-      error. "Dinner with Bob" gives an error with the names of the space.
-- [ ] Test the scope check: a token with only `ledger:read` cannot add a transaction.
-- [ ] `deploy/README.md`: how to connect a client to `https://ledger.mitchryan.org/mcp`. Make
-      sure that no Cloudflare Access rule blocks `/mcp`, `/.well-known/*`, or
-      `/api/auth/oauth2/*` for the client.
-- [ ] Release, and connect Claude (web and app) as a custom connector.
+- The login page of the OAuth server is `/auth/sign-in`, not `/login`. The route reads the
+  signed query from the request URL. A page route would get the query from TanStack Router,
+  which parses and writes it again. The signature then can fail.
+- For the same reason, `OAuthConsentView` sends `window.location.search` to
+  `submitOAuthConsentServerFn`, not the search params of the router.
+- The default `legacy: "stateless"` of `createMcpHandler` answers the open question of the
+  protocol version: the server serves the 2025 protocol and MCP 2026-07-28.
+- `requireMcpAuth` reads the JWKS from `<APP_URL>/api/auth/jwks`. On the host, this request
+  goes out through Cloudflare and back. `jose` keeps the keys in memory after the first
+  request.
+- Tested with curl against the local stack, with a session of the seed user and the real
+  Client ID Metadata Document of Claude Code. The authorize endpoint sent the user to the
+  consent page, which showed the scopes and the loopback warning. The token endpoint gave an
+  access token and a refresh token, and the refresh rotated the refresh token. `/mcp` gave a
+  `401` with `resource_metadata` with no token, and `405` for `GET`.
+- With the token: "Barack paid 90 for dinner with Donald" gave €90.00, paid by Barack, for
+  Barack and Donald, today. Barack went up €45.00, and Donald down €45.00. The same call again
+  gave the duplicate error. "Bob" gave an error with the names of the space. GBP gave an
+  error with the currencies of the space. A 60/40 split gave €54.00 and €36.00. A new amount
+  with a custom split gave an error. The delete brought the balances back. A token with only
+  `ledger:read` could not add a transaction.
+- An access token is a JWT. better-auth does not store it, thus a revoke of the refresh
+  token stops the connection only when the access token expires (1 hour).
 
 Open questions:
 
-- Do the Claude apps speak MCP 2026-07-28? Claude Code answers this in Step 1. If not, turn
-  on `legacy` support in `createMcpHandler`. The Claude docs confirm CIMD for all Claude apps.
 - Do two scopes give enough control, or is one scope `ledger` enough? Each user can already
   change all spaces (D3).
 - Must a transaction from an MCP client show its source in the UI? The first version has no
