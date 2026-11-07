@@ -10,7 +10,7 @@ import { z } from "zod";
 /**
  * Returns a space with its members, aliases, and space currencies, for the
  * settings page. Each row tells if it is in use, because a row in use cannot
- * be deleted (PLAN.md, D5, D7, D8).
+ * be deleted (PLAN.md, D5, D7, D8). Each member tells its linked user (D16).
  */
 export const getSpaceSettingsServerFn = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
@@ -21,6 +21,7 @@ export const getSpaceSettingsServerFn = createServerFn({ method: "GET" })
       .select(
         `id, slug, title, description,
         members(id, name, archived_at, transaction_parties(count), alias_members(count)),
+        linked_members(user_id, member_id),
         aliases(id, name, alias_members(member_id), transaction_parties(count)),
         space_currencies(currency, rate::text, is_default, transactions(count))`,
       )
@@ -38,6 +39,26 @@ export const getSpaceSettingsServerFn = createServerFn({ method: "GET" })
     }
     const byName = (first: { name: string }, second: { name: string }) =>
       first.name.localeCompare(second.name, env.APP_LOCALE);
+    const linkedUserIds = space.linked_members.map(
+      (linkedMember) => linkedMember.user_id,
+    );
+    const { data: linkedUsers, error: usersError } =
+      linkedUserIds.length === 0
+        ? { data: [], error: null }
+        : await context.db
+            .from("app_users")
+            .select("id, name")
+            .in("id", linkedUserIds);
+    if (usersError) {
+      return throwDatabaseError({
+        operation: "getSpaceSettingsServerFn",
+        error: usersError,
+        messages: { fallback: "The space cannot be read." },
+      });
+    }
+    const userNames = new Map(
+      linkedUsers.map((linkedUser) => [linkedUser.id, linkedUser.name]),
+    );
     return {
       locale: env.APP_LOCALE,
       space: {
@@ -53,6 +74,16 @@ export const getSpaceSettingsServerFn = createServerFn({ method: "GET" })
           isArchived: member.archived_at !== null,
           transactionCount: member.transaction_parties[0]?.count ?? 0,
           aliasCount: member.alias_members[0]?.count ?? 0,
+          linkedUser: (() => {
+            const userId = space.linked_members.find(
+              (linkedMember) => linkedMember.member_id === member.id,
+            )?.user_id;
+            if (userId === undefined) return null;
+            return {
+              name: userNames.get(userId) ?? null,
+              isCurrentUser: userId === context.userId,
+            };
+          })(),
         }))
         .toSorted(byName),
       aliases: space.aliases

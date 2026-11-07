@@ -51,6 +51,7 @@ const space: McpSpace = {
     { alias_id: obamasId, member_id: barackId },
     { alias_id: obamasId, member_id: michelleId },
   ],
+  linkedMembers: [{ user_id: "user-b", member_id: michelleId }],
   spaceCurrencies: [
     { currency: "EUR", rate: "1", is_default: true },
     { currency: "USD", rate: "0.92", is_default: false },
@@ -66,12 +67,18 @@ const space: McpSpace = {
 describe("summarizeSpace", () => {
   it("gives the names, the currencies, and the balances as sentences", () => {
     expect(
-      summarizeSpace({ space, locale: "en-IE", today: "2026-11-07" }),
+      summarizeSpace({
+        space,
+        locale: "en-IE",
+        today: "2026-11-07",
+        userId: "user-b",
+      }),
     ).toEqual({
       slug: "washington",
       title: "Washington",
       description: null,
       today: "2026-11-07",
+      you: "Michelle",
       default_currency: "EUR",
       members: [
         { name: "Barack", archived: false },
@@ -92,6 +99,17 @@ describe("summarizeSpace", () => {
         "Donald owes €36.80.",
       ],
     });
+  });
+
+  it("gives null for you when the user has no linked member", () => {
+    expect(
+      summarizeSpace({
+        space,
+        locale: "en-IE",
+        today: "2026-11-07",
+        userId: "user-a",
+      }).you,
+    ).toBeNull();
   });
 });
 

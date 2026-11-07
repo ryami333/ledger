@@ -1,29 +1,42 @@
 import { describeBalance } from "../balances/describeBalance.ts";
 import type { McpSpace } from "./McpSpace.ts";
+import { findLinkedMemberId } from "./findLinkedMemberId.ts";
 
 /**
  * Describes a space for the result of the MCP tool `get_space` (PLAN.md,
  * D15): the members, the aliases with their members, the space currencies,
  * and the balances as sentences. `today` is today in `APP_TIME_ZONE`, the
- * default date of a new transaction.
+ * default date of a new transaction. `you` is the name of the linked member
+ * of the user (D16), or null.
  */
 export const summarizeSpace = ({
   space,
   locale,
   today,
+  userId,
 }: {
   space: McpSpace;
   locale: string;
   today: string;
+  /** The user of the access token. */
+  userId: string;
 }) => {
   const memberNames = new Map(
     space.members.map((member) => [member.id, member.name]),
   );
+  const linkedMemberId = findLinkedMemberId({
+    linkedMembers: space.linkedMembers,
+    userId,
+  });
   return {
     slug: space.space.slug,
     title: space.space.title,
     description: space.space.description,
     today,
+    you:
+      linkedMemberId === null
+        ? null
+        : (memberNames.get(linkedMemberId) ?? null),
     default_currency: space.defaultCurrency,
     members: space.members.map((member) => ({
       name: member.name,

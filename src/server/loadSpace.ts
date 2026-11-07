@@ -10,7 +10,8 @@ import { Temporal } from "temporal-polyfill";
 /**
  * Reads a space with the user client: its members, aliases, space
  * currencies, transactions with their parties, and the balances (PLAN.md,
- * D10). Returns null when no space has the slug. The space page and the MCP
+ * D10), and the linked member of each user (D16). Returns null when no
+ * space has the slug. The space page and the MCP
  * tools (D15) use it.
  *
  * The transactions are in the order of D11: the newest date first, then the
@@ -29,6 +30,7 @@ export const loadSpace = async ({
     .select(
       `id, slug, title, description,
       members(id, name, archived_at),
+      linked_members(user_id, member_id),
       aliases(id, name, alias_members(member_id)),
       space_currencies(currency, rate::text, is_default),
       transactions(id, title, description, amount_minor, currency, rate::text, transaction_date, created_at,
@@ -154,6 +156,7 @@ export const loadSpace = async ({
     members,
     aliases,
     aliasMembers,
+    linkedMembers: space.linked_members,
     spaceCurrencies,
     transactions,
     balances,

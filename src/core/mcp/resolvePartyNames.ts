@@ -4,6 +4,12 @@ import type { PartyReference } from "../transactions/partyValueHelpers.ts";
 const everyoneNames = new Set(["everyone", "everybody", "all"]);
 
 /**
+ * The names that give the linked member of the current user (PLAN.md, D16).
+ * The model can write "you" for the user, for example "you paid".
+ */
+const selfNames = new Set(["me", "i", "myself", "you"]);
+
+/**
  * Writes a name for a comparison: small letters, no accents, no
  * apostrophes, and single spaces. Thus "obamas shared account" finds
  * "Obamas' Shared Account", and "Zoe" finds "Zoë".
@@ -21,7 +27,9 @@ export const normalizePartyName = (name: string): string =>
  * Finds the party of each name of one side of a transaction, for the MCP
  * tools (PLAN.md, D15). A name matches a member or an alias of the space,
  * with `normalizePartyName`. "everyone" gives each member that is not
- * archived, unless a member or an alias has that name.
+ * archived, unless a member or an alias has that name. "me", "I",
+ * "myself", and "you" give `currentMemberId`, the linked member of the
+ * current user (D16), with the same rule.
  *
  * Returns an error with the names of the space when a name matches no
  * party, or more than one party. The client can then ask the user. A party
@@ -31,10 +39,13 @@ export const resolvePartyNames = ({
   names,
   members,
   aliases,
+  currentMemberId,
 }: {
   names: readonly string[];
   members: readonly { id: string; name: string; archived_at: string | null }[];
   aliases: readonly { id: string; name: string }[];
+  /** The linked member of the current user, or null. */
+  currentMemberId: string | null;
 }):
   { parties: PartyReference[]; usesEveryone: boolean } | { error: string } => {
   const candidates = [
@@ -70,6 +81,14 @@ export const resolvePartyNames = ({
           .map((member) => ({ member_id: member.id })),
         isEveryone: true,
       };
+    }
+    if (matches.length === 0 && selfNames.has(key)) {
+      if (currentMemberId === null) {
+        return {
+          error: `ledger does not know which member "${name}" is in this space. Ask the user which member they are, then call claim_space_member. The space has: ${knownNames}.`,
+        };
+      }
+      return { parties: [{ member_id: currentMemberId }], isEveryone: false };
     }
     const [match, ...otherMatches] = matches;
     if (match === undefined) return null;

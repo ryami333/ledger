@@ -27,6 +27,7 @@ const handleMcpRequest = requireMcpAuth(
     const mcpHandler = createMcpHandler(() =>
       createLedgerMcpServer({
         db: createUserPostgrestClient({ userId }),
+        userId,
         scopes,
         clientId,
         appUrl: env.APP_URL,

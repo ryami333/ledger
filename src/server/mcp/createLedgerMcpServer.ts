@@ -6,15 +6,20 @@ import {
 import { findDuplicateTransaction } from "../../core/mcp/findDuplicateTransaction.ts";
 import { type LedgerScope, ledgerScopes } from "../../core/mcp/ledgerScopes.ts";
 import type { McpSpace } from "../../core/mcp/McpSpace.ts";
+import { findLinkedMemberId } from "../../core/mcp/findLinkedMemberId.ts";
 import {
   addTransactionInputSchema,
+  claimSpaceMemberInputSchema,
   deleteTransactionInputSchema,
   getSpaceInputSchema,
   listSpacesInputSchema,
   listTransactionsInputSchema,
   updateTransactionInputSchema,
 } from "../../core/mcp/mcpToolSchemas.ts";
-import { resolvePartyNames } from "../../core/mcp/resolvePartyNames.ts";
+import {
+  normalizePartyName,
+  resolvePartyNames,
+} from "../../core/mcp/resolvePartyNames.ts";
 import { resolveSpaceSlug } from "../../core/mcp/resolveSpaceSlug.ts";
 import { summarizeSpace } from "../../core/mcp/summarizeSpace.ts";
 import { summarizeTransaction } from "../../core/mcp/summarizeTransaction.ts";
@@ -25,6 +30,7 @@ import type { PostgrestDbClient } from "../../db/createPostgrestClient.ts";
 import { deleteTransaction } from "../deleteTransaction.ts";
 import { loadSpace } from "../loadSpace.ts";
 import { saveTransaction } from "../saveTransaction.ts";
+import { setLinkedMember } from "../setLinkedMember.ts";
 import { throwDatabaseError } from "../throwDatabaseError.ts";
 import type { CallToolResult } from "@modelcontextprotocol/server";
 import { McpServer } from "@modelcontextprotocol/server";
@@ -37,6 +43,8 @@ To record a payment:
 1. Call list_spaces, then get_space, to get the names of the members and aliases, the currencies, and today.
 2. Call add_transaction with the names as get_space gives them. Put each party that got a part of the value in paid_for, the payer too when the payer got a part. Example: "Barack paid 90 euros for dinner with Donald" gives paid_by ["Barack"] and paid_for ["Barack", "Donald"].
 3. Tell the user the result line and the link.
+
+"me", "I", and "myself" mean the user. list_spaces and get_space give "you": the member that the user is in each space, or null. When it is null and the user writes about themselves, ask which member they are, then call claim_space_member. ledger then remembers it.
 
 When a name, the space, or the currency is not clear, ask the user. Do not guess. Before you delete a transaction, ask the user to confirm.`;
 
@@ -63,11 +71,12 @@ const unwrap = <Value extends object>(
 /**
  * Makes the MCP server of ledger for one request (PLAN.md, D15). Each tool
  * reads and writes with `db`, the user client of the access token. Thus RLS
- * and the actor triggers apply as in the web app. `scopes` are the scopes of
- * the access token.
+ * and the actor triggers apply as in the web app. `userId` and `scopes` are
+ * the user and the scopes of the access token.
  */
 export const createLedgerMcpServer = ({
   db,
+  userId,
   scopes,
   clientId,
   appUrl,
@@ -75,6 +84,7 @@ export const createLedgerMcpServer = ({
   timeZone,
 }: {
   db: PostgrestDbClient;
+  userId: string;
   scopes: readonly string[];
   clientId: string;
   appUrl: string;
@@ -136,7 +146,7 @@ export const createLedgerMcpServer = ({
     const { data, error } = await db
       .from("spaces")
       .select(
-        "slug, title, space_currencies(currency, is_default), members(name, archived_at)",
+        "slug, title, space_currencies(currency, is_default), members(id, name, archived_at), linked_members(user_id, member_id)",
       )
       .order("created_at", { ascending: false });
     if (error) {
@@ -199,6 +209,10 @@ export const createLedgerMcpServer = ({
         names,
         members: space.members,
         aliases: space.aliases,
+        currentMemberId: findLinkedMemberId({
+          linkedMembers: space.linkedMembers,
+          userId,
+        }),
       }),
     );
     if (resolution.usesEveryone && split !== null) {
@@ -240,7 +254,8 @@ export const createLedgerMcpServer = ({
         transaction === undefined
           ? null
           : summarizeTransaction({ transaction, space, locale, appUrl }),
-      balances: summarizeSpace({ space, locale, today: today() }).balances,
+      balances: summarizeSpace({ space, locale, today: today(), userId })
+        .balances,
     };
   };
 
@@ -249,7 +264,7 @@ export const createLedgerMcpServer = ({
     {
       title: "List Spaces",
       description:
-        "Lists the spaces of ledger: the slug, the title, the default currency, and the names of the members.",
+        "Lists the spaces of ledger: the slug, the title, the default currency, the names of the members, and you: the member that the user is, or null.",
       inputSchema: listSpacesInputSchema,
       annotations: { readOnlyHint: true },
     },
@@ -268,6 +283,16 @@ export const createLedgerMcpServer = ({
             members: space.members
               .filter((member) => member.archived_at === null)
               .map((member) => member.name),
+            you: (() => {
+              const linkedMemberId = findLinkedMemberId({
+                linkedMembers: space.linked_members,
+                userId,
+              });
+              return (
+                space.members.find((member) => member.id === linkedMemberId)
+                  ?.name ?? null
+              );
+            })(),
           })),
       }),
   );
@@ -277,7 +302,7 @@ export const createLedgerMcpServer = ({
     {
       title: "Get Space",
       description:
-        "Gives one space: the members, the aliases and their members, the currencies with their rates, the balances, and today. Call it before add_transaction.",
+        "Gives one space: the members, the aliases and their members, the currencies with their rates, the balances, today, and you: the member that the user is, or null. Call it before add_transaction.",
       inputSchema: getSpaceInputSchema,
       annotations: { readOnlyHint: true },
     },
@@ -290,6 +315,7 @@ export const createLedgerMcpServer = ({
             space: await readSpace(input.space),
             locale,
             today: today(),
+            userId,
           }),
       }),
   );
@@ -586,8 +612,54 @@ export const createLedgerMcpServer = ({
               space: spaceAfterDelete,
               locale,
               today: today(),
+              userId,
             }).balances,
           };
+        },
+      }),
+  );
+
+  server.registerTool(
+    "claim_space_member",
+    {
+      title: "Claim Space Member",
+      description:
+        'Stores which member the user is in a space, so that "me" works in later calls. Call it only when the user tells you who they are. null removes the link.',
+      inputSchema: claimSpaceMemberInputSchema,
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: false,
+        idempotentHint: true,
+      },
+    },
+    (input) =>
+      runTool({
+        toolName: "claim_space_member",
+        scope: ledgerScopes.write,
+        run: async () => {
+          const space = await readSpace(input.space);
+          const member = (() => {
+            if (input.member === null) return null;
+            const key = normalizePartyName(input.member);
+            const match = space.members.find(
+              (candidate) => normalizePartyName(candidate.name) === key,
+            );
+            if (match === undefined) {
+              const memberNames = space.members
+                .map((candidate) => candidate.name)
+                .join(", ");
+              throw new ToolInputError(
+                `The space has no member with the name "${input.member}". The members are: ${memberNames}.`,
+              );
+            }
+            return match;
+          })();
+          await setLinkedMember({
+            db,
+            spaceId: space.space.id,
+            memberId: member?.id ?? null,
+          });
+          return { space: space.space.slug, you: member?.name ?? null };
         },
       }),
   );

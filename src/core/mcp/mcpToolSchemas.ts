@@ -133,3 +133,14 @@ export const deleteTransactionInputSchema = z.object({
     .guid()
     .describe("The ID of the transaction, from list_transactions."),
 });
+
+export const claimSpaceMemberInputSchema = z.object({
+  space: spaceField,
+  member: z
+    .string()
+    .min(1)
+    .nullable()
+    .describe(
+      "The name of the member that the user is, as get_space gives it. null removes the link. Call it only after the user tells you which member they are.",
+    ),
+});

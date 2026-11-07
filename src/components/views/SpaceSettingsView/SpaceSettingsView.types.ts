@@ -5,6 +5,11 @@ export type SettingsMember = {
   isArchived: boolean;
   transactionCount: number;
   aliasCount: number;
+  /**
+   * The user that selected this member as the linked member (PLAN.md, D16),
+   * or null. `name` is null when the user has no name.
+   */
+  linkedUser: { name: string | null; isCurrentUser: boolean } | null;
 };
 
 /** An alias on the settings page. */

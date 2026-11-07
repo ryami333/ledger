@@ -2,6 +2,7 @@ import { memberFormSchema } from "../../../core/forms/memberFormSchema.ts";
 import { useEntityModalState } from "../../../lib/useEntityModalState.ts";
 import { deleteMemberServerFn } from "../../../serverFunctions/deleteMemberServerFn.ts";
 import { saveMemberServerFn } from "../../../serverFunctions/saveMemberServerFn.ts";
+import { setLinkedMemberServerFn } from "../../../serverFunctions/setLinkedMemberServerFn.ts";
 import { setMemberArchivedServerFn } from "../../../serverFunctions/setMemberArchivedServerFn.ts";
 import { ConfirmModal } from "../../ui/ConfirmModal.tsx";
 import { RenameMemberModal } from "./RenameMemberModal.tsx";
@@ -25,7 +26,8 @@ import { type z } from "zod";
 
 /**
  * The members of the space: add, rename, archive, and delete (PLAN.md, D8).
- * A member with transactions or aliases cannot be deleted.
+ * A member with transactions or aliases cannot be deleted. "This Is Me"
+ * selects the linked member of the signed-in user (D16).
  */
 export function MembersSection({
   spaceId,
@@ -37,6 +39,9 @@ export function MembersSection({
   const router = useRouter();
   const [actionError, setActionError] = useState<string | null>(null);
   const [pendingMemberId, setPendingMemberId] = useState<string | null>(null);
+  const [pendingLinkMemberId, setPendingLinkMemberId] = useState<string | null>(
+    null,
+  );
   const renameModalState = useEntityModalState<SettingsMember>();
   const deleteModalState = useEntityModalState<SettingsMember>();
   const [isDeletePending, setIsDeletePending] = useState(false);
@@ -83,6 +88,34 @@ export function MembersSection({
     }
   };
 
+  /** Selects `member` as the linked member, or removes it with `null`. */
+  const setLinkedMember = async ({
+    member,
+  }: {
+    member: SettingsMember | null;
+  }) => {
+    setActionError(null);
+    setPendingLinkMemberId(
+      member?.id ??
+        members.find((candidate) => candidate.linkedUser?.isCurrentUser)?.id ??
+        null,
+    );
+    try {
+      await setLinkedMemberServerFn({
+        data: { spaceId, memberId: member?.id ?? null },
+      });
+      await router.invalidate();
+    } catch (err) {
+      setActionError(
+        err instanceof Error
+          ? err.message
+          : "The linked member cannot be saved.",
+      );
+    } finally {
+      setPendingLinkMemberId(null);
+    }
+  };
+
   const confirmDelete = async () => {
     const member = deleteModalState.selectedEntity;
     if (!member) return;
@@ -104,7 +137,7 @@ export function MembersSection({
   return (
     <SettingsSection
       title="Members"
-      description="An archived member does not show in the party picker of a new transaction. Only a member with no transactions and no aliases can be deleted."
+      description="An archived member does not show in the party picker of a new transaction. Only a member with no transactions and no aliases can be deleted. Select the member that you are with “This Is Me”, so that an assistant such as Claude knows who “me” is."
     >
       {actionError && (
         <Alert color="red" withCloseButton onClose={() => setActionError(null)}>
@@ -133,10 +166,41 @@ export function MembersSection({
                           Archived
                         </Badge>
                       )}
+                      {member.linkedUser?.isCurrentUser && (
+                        <Badge variant="light" size="sm">
+                          You
+                        </Badge>
+                      )}
+                      {member.linkedUser &&
+                        !member.linkedUser.isCurrentUser && (
+                          <Text c="dimmed" size="sm">
+                            {member.linkedUser.name ?? "A different user"}
+                          </Text>
+                        )}
                     </Group>
                   </Table.Td>
                   <Table.Td>
                     <Group gap="xs" justify="flex-end" wrap="nowrap">
+                      {member.linkedUser?.isCurrentUser && (
+                        <Button
+                          variant="subtle"
+                          size="compact-sm"
+                          loading={pendingLinkMemberId === member.id}
+                          onClick={() => setLinkedMember({ member: null })}
+                        >
+                          Not Me
+                        </Button>
+                      )}
+                      {member.linkedUser === null && (
+                        <Button
+                          variant="subtle"
+                          size="compact-sm"
+                          loading={pendingLinkMemberId === member.id}
+                          onClick={() => setLinkedMember({ member })}
+                        >
+                          This Is Me
+                        </Button>
+                      )}
                       <Button
                         variant="subtle"
                         size="compact-sm"

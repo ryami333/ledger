@@ -44,6 +44,7 @@ describe("resolvePartyNames", () => {
         names: ["barack", "Obamas Shared Account"],
         members,
         aliases,
+        currentMemberId: null,
       }),
     ).toEqual({
       parties: [{ member_id: barack.id }, { alias_id: obamas.id }],
@@ -53,7 +54,12 @@ describe("resolvePartyNames", () => {
 
   it("gives each member that is not archived for everyone", () => {
     expect(
-      resolvePartyNames({ names: ["Everyone"], members, aliases }),
+      resolvePartyNames({
+        names: ["Everyone"],
+        members,
+        aliases,
+        currentMemberId: null,
+      }),
     ).toEqual({
       parties: [
         { member_id: barack.id },
@@ -66,7 +72,12 @@ describe("resolvePartyNames", () => {
 
   it("gives a party one time when two names give it", () => {
     expect(
-      resolvePartyNames({ names: ["Donald", "everyone"], members, aliases }),
+      resolvePartyNames({
+        names: ["Donald", "everyone"],
+        members,
+        aliases,
+        currentMemberId: null,
+      }),
     ).toEqual({
       parties: [
         { member_id: donald.id },
@@ -78,7 +89,12 @@ describe("resolvePartyNames", () => {
   });
 
   it("gives an error with the names of the space for an unknown name", () => {
-    const result = resolvePartyNames({ names: ["Bob"], members, aliases });
+    const result = resolvePartyNames({
+      names: ["Bob"],
+      members,
+      aliases,
+      currentMemberId: null,
+    });
     expect(result).toEqual({
       error: expect.stringContaining('"Bob"'),
     });
@@ -94,6 +110,7 @@ describe("resolvePartyNames", () => {
         names: ["Barack"],
         members,
         aliases: [{ id: obamas.id, name: "barack" }],
+        currentMemberId: null,
       }),
     ).toEqual({ error: expect.stringContaining("member and of an alias") });
   });
@@ -105,10 +122,58 @@ describe("resolvePartyNames", () => {
         names: ["everyone"],
         members: [barack, everyoneMember],
         aliases: [],
+        currentMemberId: null,
       }),
     ).toEqual({
       parties: [{ member_id: everyoneMember.id }],
       usesEveryone: false,
     });
+  });
+
+  it("gives the linked member of the current user for me", () => {
+    expect(
+      resolvePartyNames({
+        names: ["Shan", "me"],
+        members: [...members, { id: "shan", name: "Shan", archived_at: null }],
+        aliases,
+        currentMemberId: donald.id,
+      }),
+    ).toEqual({
+      parties: [{ member_id: "shan" }, { member_id: donald.id }],
+      usesEveryone: false,
+    });
+    for (const name of ["I", "Myself", "you"]) {
+      expect(
+        resolvePartyNames({
+          names: [name],
+          members,
+          aliases,
+          currentMemberId: barack.id,
+        }),
+      ).toEqual({ parties: [{ member_id: barack.id }], usesEveryone: false });
+    }
+  });
+
+  it("asks for claim_space_member when the user has no linked member", () => {
+    expect(
+      resolvePartyNames({
+        names: ["me"],
+        members,
+        aliases,
+        currentMemberId: null,
+      }),
+    ).toEqual({ error: expect.stringContaining("claim_space_member") });
+  });
+
+  it("uses a member with the name Me, not the linked member", () => {
+    const meMember = { ...michelle, name: "Me" };
+    expect(
+      resolvePartyNames({
+        names: ["me"],
+        members: [barack, meMember],
+        aliases: [],
+        currentMemberId: barack.id,
+      }),
+    ).toEqual({ parties: [{ member_id: meMember.id }], usesEveryone: false });
   });
 });

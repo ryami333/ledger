@@ -16,6 +16,8 @@ export type McpSpace = {
   members: readonly { id: string; name: string; archived_at: string | null }[];
   aliases: readonly { id: string; name: string }[];
   aliasMembers: readonly AliasMemberRow[];
+  /** The linked member of each user (PLAN.md, D16). */
+  linkedMembers: readonly { user_id: string; member_id: string }[];
   spaceCurrencies: readonly {
     currency: string;
     rate: string;
