@@ -10,6 +10,7 @@ import { findLinkedMemberId } from "../../core/mcp/findLinkedMemberId.ts";
 import {
   addTransactionInputSchema,
   claimSpaceMemberInputSchema,
+  setDefaultSpaceInputSchema,
   deleteTransactionInputSchema,
   getSpaceInputSchema,
   listSpacesInputSchema,
@@ -30,6 +31,7 @@ import type { PostgrestDbClient } from "../../db/createPostgrestClient.ts";
 import { deleteTransaction } from "../deleteTransaction.ts";
 import { loadSpace } from "../loadSpace.ts";
 import { saveTransaction } from "../saveTransaction.ts";
+import { setDefaultSpace } from "../setDefaultSpace.ts";
 import { setLinkedMember } from "../setLinkedMember.ts";
 import { throwDatabaseError } from "../throwDatabaseError.ts";
 import type { CallToolResult } from "@modelcontextprotocol/server";
@@ -40,7 +42,7 @@ import { Temporal } from "temporal-polyfill";
 const serverInstructions = `ledger is a shared expense tracker. A space is a group with a shared ledger, for example a trip or a household. A member is a name in a space. An alias is a name for a set of members, for example a shared account.
 
 To record a payment:
-1. Call list_spaces, then get_space, to get the names of the members and aliases, the currencies, and today.
+1. Call list_spaces, then get_space, to get the names of the members and aliases, the currencies, and today. When the user names no space, use the space with "default": true. With no default space and two or more spaces, ask the user, and offer to call set_default_space.
 2. Call add_transaction with the names as get_space gives them. Put each party that got a part of the value in paid_for, the payer too when the payer got a part. Example: "Barack paid 90 euros for dinner with Donald" gives paid_by ["Barack"] and paid_for ["Barack", "Donald"].
 3. Tell the user the result line and the link.
 
@@ -146,7 +148,7 @@ export const createLedgerMcpServer = ({
     const { data, error } = await db
       .from("spaces")
       .select(
-        "slug, title, space_currencies(currency, is_default), members(id, name, archived_at), linked_members(user_id, member_id)",
+        "slug, title, space_currencies(currency, is_default), members(id, name, archived_at), linked_members(user_id, member_id), default_spaces(user_id)",
       )
       .order("created_at", { ascending: false });
     if (error) {
@@ -156,19 +158,33 @@ export const createLedgerMcpServer = ({
         messages: { fallback: "The spaces cannot be read." },
       });
     }
-    return data;
+    // RLS gives only the default space of the user of the token (D17).
+    return data.map((space) => ({
+      ...space,
+      isDefault: space.default_spaces.length > 0,
+    }));
   };
 
-  /** Selects the space of a tool call and reads it. */
-  const readSpace = async (slug: string | undefined): Promise<McpSpace> => {
-    const resolution = unwrap(
-      resolveSpaceSlug({ slug, spaces: await loadSpaceList() }),
-    );
+  /**
+   * Selects the space of a tool call and reads it. `isDefault` tells if it
+   * is the default space of the user (PLAN.md, D17).
+   */
+  const readSpace = async (
+    slug: string | undefined,
+  ): Promise<McpSpace & { isDefault: boolean }> => {
+    const spaces = await loadSpaceList();
+    const resolution = unwrap(resolveSpaceSlug({ slug, spaces }));
     const space = await loadSpace({ db, spaceSlug: resolution.slug });
     if (space === null) {
       throw new ToolInputError(`There is no space "${resolution.slug}".`);
     }
-    return space;
+    return {
+      ...space,
+      isDefault: spaces.some(
+        (candidate) =>
+          candidate.slug === resolution.slug && candidate.isDefault,
+      ),
+    };
   };
 
   const findSpaceCurrency = ({
@@ -254,8 +270,13 @@ export const createLedgerMcpServer = ({
         transaction === undefined
           ? null
           : summarizeTransaction({ transaction, space, locale, appUrl }),
-      balances: summarizeSpace({ space, locale, today: today(), userId })
-        .balances,
+      balances: summarizeSpace({
+        space,
+        locale,
+        today: today(),
+        userId,
+        isDefault: space.isDefault,
+      }).balances,
     };
   };
 
@@ -264,7 +285,7 @@ export const createLedgerMcpServer = ({
     {
       title: "List Spaces",
       description:
-        "Lists the spaces of ledger: the slug, the title, the default currency, the names of the members, and you: the member that the user is, or null.",
+        "Lists the spaces of ledger: the slug, the title, default (true for the default space of the user), the default currency, the names of the members, and you: the member that the user is, or null.",
       inputSchema: listSpacesInputSchema,
       annotations: { readOnlyHint: true },
     },
@@ -276,6 +297,7 @@ export const createLedgerMcpServer = ({
           (await loadSpaceList()).map((space) => ({
             slug: space.slug,
             title: space.title,
+            default: space.isDefault,
             default_currency:
               space.space_currencies.find(
                 (spaceCurrency) => spaceCurrency.is_default,
@@ -302,7 +324,7 @@ export const createLedgerMcpServer = ({
     {
       title: "Get Space",
       description:
-        "Gives one space: the members, the aliases and their members, the currencies with their rates, the balances, today, and you: the member that the user is, or null. Call it before add_transaction.",
+        "Gives one space: default (true for the default space of the user), the members, the aliases and their members, the currencies with their rates, the balances, today, and you: the member that the user is, or null. Call it before add_transaction.",
       inputSchema: getSpaceInputSchema,
       annotations: { readOnlyHint: true },
     },
@@ -311,12 +333,16 @@ export const createLedgerMcpServer = ({
         toolName: "get_space",
         scope: ledgerScopes.read,
         run: async () =>
-          summarizeSpace({
-            space: await readSpace(input.space),
-            locale,
-            today: today(),
-            userId,
-          }),
+          (async () => {
+            const space = await readSpace(input.space);
+            return summarizeSpace({
+              space,
+              locale,
+              today: today(),
+              userId,
+              isDefault: space.isDefault,
+            });
+          })(),
       }),
   );
 
@@ -613,6 +639,7 @@ export const createLedgerMcpServer = ({
               locale,
               today: today(),
               userId,
+              isDefault: spaceAfterDelete.isDefault,
             }).balances,
           };
         },
@@ -660,6 +687,35 @@ export const createLedgerMcpServer = ({
             memberId: member?.id ?? null,
           });
           return { space: space.space.slug, you: member?.name ?? null };
+        },
+      }),
+  );
+
+  server.registerTool(
+    "set_default_space",
+    {
+      title: "Set Default Space",
+      description:
+        "Stores the default space of the user: the space for a payment when the user names no space. Call it only when the user asks for it. null removes it.",
+      inputSchema: setDefaultSpaceInputSchema,
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: false,
+        idempotentHint: true,
+      },
+    },
+    (input) =>
+      runTool({
+        toolName: "set_default_space",
+        scope: ledgerScopes.write,
+        run: async () => {
+          if (input.space === null) {
+            await setDefaultSpace({ db, spaceId: null });
+            return { default_space: null };
+          }
+          const space = await readSpace(input.space);
+          await setDefaultSpace({ db, spaceId: space.space.id });
+          return { default_space: space.space.slug };
         },
       }),
   );

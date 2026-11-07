@@ -144,3 +144,13 @@ export const claimSpaceMemberInputSchema = z.object({
       "The name of the member that the user is, as get_space gives it. null removes the link. Call it only after the user tells you which member they are.",
     ),
 });
+
+export const setDefaultSpaceInputSchema = z.object({
+  space: z
+    .string()
+    .min(1)
+    .nullable()
+    .describe(
+      "The slug of the space, from list_spaces. null removes the default space.",
+    ),
+});

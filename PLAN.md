@@ -1052,6 +1052,15 @@ Notes:
   error with the currencies of the space. A 60/40 split gave €54.00 and €36.00. A new amount
   with a custom split gave an error. The delete brought the balances back. A token with only
   `ledger:read` could not add a transaction.
+- Linked members (D16) and default spaces (D17) came after the first test. Tested with curl:
+  "me" with no linked member gave the error that asks for `claim_space_member`. After
+  `claim_space_member` with "barack", "Michelle paid for me" gave "Michelle paid for Barack".
+  `get_space` with no space and no default gave the error that offers `set_default_space`.
+  After `set_default_space`, `list_spaces` gave `default: true` for that space only, and
+  `get_space` with no space used it. Tested in the browser: "This Is Me", "Not Me", "Make
+  Default", and "Remove Default" in the space settings.
+- PostgREST embeds `linked_members` under `members` as one object, not as an array, because
+  `(space_id, member_id)` is unique. Thus the queries read `linked_members` under `spaces`.
 - An access token is a JWT. better-auth does not store it, thus a revoke of the refresh
   token stops the connection only when the access token expires (1 hour).
 

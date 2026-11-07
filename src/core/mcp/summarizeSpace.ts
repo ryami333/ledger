@@ -7,19 +7,23 @@ import { findLinkedMemberId } from "./findLinkedMemberId.ts";
  * D15): the members, the aliases with their members, the space currencies,
  * and the balances as sentences. `today` is today in `APP_TIME_ZONE`, the
  * default date of a new transaction. `you` is the name of the linked member
- * of the user (D16), or null.
+ * of the user (D16), or null. `default` tells if it is the default space of
+ * the user (D17).
  */
 export const summarizeSpace = ({
   space,
   locale,
   today,
   userId,
+  isDefault,
 }: {
   space: McpSpace;
   locale: string;
   today: string;
   /** The user of the access token. */
   userId: string;
+  /** The space is the default space of the user of the token. */
+  isDefault: boolean;
 }) => {
   const memberNames = new Map(
     space.members.map((member) => [member.id, member.name]),
@@ -32,6 +36,7 @@ export const summarizeSpace = ({
     slug: space.space.slug,
     title: space.space.title,
     description: space.space.description,
+    default: isDefault,
     today,
     you:
       linkedMemberId === null

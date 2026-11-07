@@ -1,6 +1,7 @@
 import { AliasesSection } from "./AliasesSection.tsx";
 import { CurrenciesSection } from "./CurrenciesSection.tsx";
 import { DangerZoneSection } from "./DangerZoneSection.tsx";
+import { DefaultSpaceSection } from "./DefaultSpaceSection.tsx";
 import { ImportSection } from "./ImportSection.tsx";
 import { MembersSection } from "./MembersSection.tsx";
 import { SpaceDetailsSection } from "./SpaceDetailsSection.tsx";
@@ -14,7 +15,8 @@ import { Anchor, Stack, Title } from "@mantine/core";
 import { Link } from "@tanstack/react-router";
 
 /**
- * The page `/spaces/$spaceSlug/settings`: the details, the members, the
+ * The page `/spaces/$spaceSlug/settings`: the details, the default space
+ * (D17), the members, the
  * aliases, and the currencies of a space, the CSV import, and the delete of
  * the space (PLAN.md, UI).
  */
@@ -52,6 +54,7 @@ export function SpaceSettingsView({
         key={`${space.title}\n${space.description}\n${space.slug}`}
         space={space}
       />
+      <DefaultSpaceSection spaceId={space.id} isDefault={space.isDefault} />
       <MembersSection spaceId={space.id} members={members} />
       <AliasesSection spaceId={space.id} members={members} aliases={aliases} />
       <CurrenciesSection

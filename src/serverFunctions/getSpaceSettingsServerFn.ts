@@ -22,6 +22,7 @@ export const getSpaceSettingsServerFn = createServerFn({ method: "GET" })
         `id, slug, title, description,
         members(id, name, archived_at, transaction_parties(count), alias_members(count)),
         linked_members(user_id, member_id),
+        default_spaces(user_id),
         aliases(id, name, alias_members(member_id), transaction_parties(count)),
         space_currencies(currency, rate::text, is_default, transactions(count))`,
       )
@@ -66,6 +67,8 @@ export const getSpaceSettingsServerFn = createServerFn({ method: "GET" })
         slug: space.slug,
         title: space.title,
         description: space.description,
+        // RLS gives only the row of the signed-in user (PLAN.md, D17).
+        isDefault: space.default_spaces.length > 0,
       },
       members: space.members
         .map((member) => ({

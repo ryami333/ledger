@@ -72,11 +72,13 @@ describe("summarizeSpace", () => {
         locale: "en-IE",
         today: "2026-11-07",
         userId: "user-b",
+        isDefault: true,
       }),
     ).toEqual({
       slug: "washington",
       title: "Washington",
       description: null,
+      default: true,
       today: "2026-11-07",
       you: "Michelle",
       default_currency: "EUR",
@@ -108,6 +110,7 @@ describe("summarizeSpace", () => {
         locale: "en-IE",
         today: "2026-11-07",
         userId: "user-a",
+        isDefault: false,
       }).you,
     ).toBeNull();
   });

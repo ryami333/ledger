@@ -1,8 +1,12 @@
 import { resolveSpaceSlug } from "./resolveSpaceSlug.ts";
 import { describe, expect, it } from "vitest";
 
-const washington = { slug: "washington", title: "Washington" };
-const paris = { slug: "paris-2026", title: "Paris 2026" };
+const washington = {
+  slug: "washington",
+  title: "Washington",
+  isDefault: false,
+};
+const paris = { slug: "paris-2026", title: "Paris 2026", isDefault: false };
 
 describe("resolveSpaceSlug", () => {
   it("selects the only space when there is no slug", () => {
@@ -11,10 +15,21 @@ describe("resolveSpaceSlug", () => {
     );
   });
 
-  it("asks for a slug when there are two spaces", () => {
+  it("selects the default space when there is no slug", () => {
+    expect(
+      resolveSpaceSlug({
+        slug: undefined,
+        spaces: [washington, { ...paris, isDefault: true }],
+      }),
+    ).toEqual({ slug: "paris-2026" });
+  });
+
+  it("asks for a slug when there are two spaces and no default", () => {
     expect(
       resolveSpaceSlug({ slug: undefined, spaces: [washington, paris] }),
-    ).toEqual({ error: expect.stringContaining('"paris-2026" (Paris 2026)') });
+    ).toEqual({
+      error: expect.stringContaining("set_default_space"),
+    });
   });
 
   it("finds a space by slug or by title", () => {

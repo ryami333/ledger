@@ -34,4 +34,6 @@ export type SettingsSpace = {
   slug: string;
   title: string;
   description: string | null;
+  /** The space is the default space of the signed-in user (PLAN.md, D17). */
+  isDefault: boolean;
 };
