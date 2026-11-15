@@ -5,7 +5,7 @@ import { setResponseStatus } from "@tanstack/react-start/server";
 
 /**
  * Refuses a server function call with no signed-in user. It gives the user
- * client (`context.db`) and the user ID to the handler.
+ * client (`context.db`), the user ID, and the user to the handler.
  */
 export const authMiddleware = createMiddleware({ type: "function" }).server(
   async ({ next }) => {
@@ -18,6 +18,7 @@ export const authMiddleware = createMiddleware({ type: "function" }).server(
       context: {
         db: createUserPostgrestClient({ userId: user.id }),
         userId: user.id,
+        user,
       },
     });
   },

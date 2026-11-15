@@ -1,17 +1,21 @@
+import { buildMagicLinkConfirmUrl } from "../core/auth/buildMagicLinkConfirmUrl.ts";
 import { isClaudeClientMetadataUrl } from "../core/auth/isClaudeClientMetadataUrl.ts";
+import { pocketIdProviderId } from "../core/auth/pocketIdProviderId.ts";
+import { resolveRedirectPath } from "../core/auth/resolveRedirectPath.ts";
+import { resolveRoleOnUserCreate } from "../core/auth/resolveRoleOnUserCreate.ts";
 import { snakeCaseModel } from "../core/auth/snakeCaseModel.ts";
+import { renderMagicLinkEmail } from "../core/email/renderMagicLinkEmail.ts";
 import { ledgerScopes } from "../core/mcp/ledgerScopes.ts";
 import { env } from "../env.ts";
+import { isEmailEnabled, sendEmail } from "./sendEmail.ts";
 import { cimd } from "@better-auth/cimd";
 import { fetchClientMetadataResource } from "@better-auth/cimd/node";
 import { mcp } from "@better-auth/mcp";
 import { betterAuth } from "better-auth";
-import { genericOAuth, jwt } from "better-auth/plugins";
+import { genericOAuth, jwt, magicLink } from "better-auth/plugins";
 import { tanstackStartCookies } from "better-auth/tanstack-start";
 import pg from "pg";
-
-/** better-auth calls the provider with this ID, also in the callback URL. */
-export const pocketIdProviderId = "pocket-id";
+import { Temporal } from "temporal-polyfill";
 
 /**
  * The MCP server (PLAN.md, D15). Each access token has this URL as its
@@ -21,10 +25,66 @@ export const mcpResourceUrl = new URL("/mcp", env.APP_URL).href;
 
 const timestampFields = { createdAt: "created_at", updatedAt: "updated_at" };
 
+/** A magic link expires after this time (PLAN.md, D18, rule 5). */
+export const MAGIC_LINK_EXPIRY = Temporal.Duration.from({ minutes: 15 });
+
 /**
- * The sign-in of the web app (PLAN.md, D3). Pocket ID is the only provider.
- * Its OIDC client allows only one Pocket ID user group, thus Pocket
- * ID decides who has an account. There is no email or password sign-in.
+ * The magic link (PLAN.md, D18). It signs in a user that exists, and never
+ * makes a user. better-auth calls sendMagicLink for each address. Thus
+ * sendMagicLink looks up the user first, and sends nothing to an unknown
+ * address. The endpoint gives the same answer in both cases.
+ *
+ * The send does not block the answer, so that the duration of the answer
+ * also does not tell if the user exists. sendEmail logs each failure.
+ */
+const magicLinkPlugin = magicLink({
+  disableSignUp: true,
+  expiresIn: MAGIC_LINK_EXPIRY.total({ unit: "seconds" }),
+  storeToken: "hashed",
+  rateLimit: {
+    window: Temporal.Duration.from({ minutes: 10 }).total({ unit: "seconds" }),
+    max: 5,
+  },
+  sendMagicLink: async ({ email, url, token }, context) => {
+    const user = await context?.context.internalAdapter
+      .findUserByEmail(email)
+      .then((result) => result?.user ?? null);
+    if (!user) {
+      console.log("sendMagicLink skipped", { userId: "no user" });
+      return;
+    }
+    // The email links to the confirm page, not to the verify URL of
+    // better-auth (D18, rule 4). The page sends callbackURL again.
+    const callbackPath = resolveRedirectPath({
+      next: new URL(url).searchParams.get("callbackURL"),
+      fallback: "/",
+    });
+    const confirmUrl = buildMagicLinkConfirmUrl({
+      appUrl: env.APP_URL,
+      token,
+      callbackPath,
+    });
+    console.log("sendMagicLink sending", { userId: user.id });
+    sendEmail({
+      to: user.email,
+      email: renderMagicLinkEmail({
+        confirmUrl: confirmUrl.href,
+        expiresInMinutes: MAGIC_LINK_EXPIRY.total({ unit: "minutes" }),
+      }),
+      purpose: "magic-link",
+    }).catch(() => {
+      // sendEmail logs the error code.
+    });
+  },
+});
+
+/**
+ * The sign-in of the web app (PLAN.md, D3 and D18). A user signs in with
+ * Pocket ID or with a magic link. The OIDC client of Pocket ID allows only
+ * one Pocket ID user group. There is no email or password sign-in.
+ *
+ * The role of a user (D19) is set one time, when the user is made: admin
+ * for the Pocket ID callback, else guest. Nothing changes it later.
  *
  * better-auth keeps the users and the sessions in the schema better_auth.
  * db/schemas/090_better_auth.sql defines the tables, with the snake_case
@@ -39,10 +99,43 @@ export const auth = betterAuth({
   }),
   secret: env.BETTER_AUTH_SECRET,
   baseURL: env.APP_URL,
-  advanced: { database: { generateId: "uuid" } },
+  advanced: {
+    database: { generateId: "uuid" },
+    // Behind Cloudflare, the client IP address is in cf-connecting-ip. The
+    // rate limit counts the requests of each IP address.
+    ipAddress: { ipAddressHeaders: ["cf-connecting-ip", "x-forwarded-for"] },
+  },
+  // On in each environment, so that the limit of the magic link (D18, rule 5)
+  // is also active in local tests. The storage is the memory of the process.
+  rateLimit: { enabled: true },
   user: {
     modelName: "users",
     fields: { emailVerified: "email_verified", ...timestampFields },
+    additionalFields: {
+      // No client request can set the role (input: false).
+      role: {
+        type: "string",
+        required: false,
+        input: false,
+        defaultValue: "guest",
+      },
+    },
+  },
+  databaseHooks: {
+    user: {
+      create: {
+        // The context is the better-auth endpoint that makes the user, or
+        // null for a direct call, for example an invitation.
+        before: async (user, context) => {
+          const providerId: unknown = context?.params?.id;
+          const role = resolveRoleOnUserCreate({
+            endpointPath: context?.path,
+            providerId: typeof providerId === "string" ? providerId : undefined,
+          });
+          return { data: { ...user, role } };
+        },
+      },
+    },
   },
   session: {
     modelName: "sessions",
@@ -89,9 +182,9 @@ export const auth = betterAuth({
       ],
     }),
     // The OAuth 2.1 authorization server for the MCP clients (PLAN.md, D15).
-    // jwt() signs the access tokens. The sign-in stays with Pocket ID: the
-    // login page /auth/sign-in sends the user to Pocket ID, and better-auth
-    // then continues the authorization.
+    // jwt() signs the access tokens. The login page /auth/sign-in sends the
+    // user to Pocket ID, and better-auth then continues the authorization.
+    // With a magic link, the link opens the authorize endpoint (D18, rule 6).
     jwt({
       schema: {
         jwks: snakeCaseModel({
@@ -219,6 +312,8 @@ export const auth = betterAuth({
       metadataProfile: "mcp-2026-07-28",
       isMetadataDocumentUrlAllowed: isClaudeClientMetadataUrl,
     }),
+    // Only with an API key of Resend (D18, rule 7).
+    ...(isEmailEnabled ? [magicLinkPlugin] : []),
     // Must be the last plugin.
     tanstackStartCookies(),
   ],

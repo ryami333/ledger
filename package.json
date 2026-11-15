@@ -26,6 +26,7 @@
     "db:diff": "scripts/diff-database.sh",
     "db:test": "scripts/test-database.sh",
     "db:psql": "docker compose exec db psql -U postgres",
+    "user:remove": "node --env-file-if-exists=.env src/scripts/removeUser.ts",
     "generate": "docker compose run --rm --quiet-pull types > src/db/database.types.ts && prettier --write src/db/database.types.ts",
     "release": "release-it"
   },
