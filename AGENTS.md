@@ -823,3 +823,28 @@ yarn test
 ```
 
 Run `yarn db:test` after each change in `db/`.
+
+## Releases
+
+Make a release only from `main`. Merge the feature branch into `main` first, and push.
+
+1. Choose the version bump: `minor` for a new feature, `patch` for a fix.
+2. Run `yarn release <bump> --ci --no-github.release`. The hooks run lint, tests, pgTAP
+   tests, and the build. The pgTAP tests need Docker. release-it then commits, tags
+   `v<version>`, and pushes.
+3. Make the GitHub release with `gh release create v<version> --notes-file <file>`.
+4. Wait for the workflow `Build & Publish Docker image` of the tag to finish.
+5. Pin the new image of `ledger-web` by tag and digest in `deploy/compose.yaml` right away.
+   Commit as `Pin ledger-web to the image of v<version>`, and push.
+
+Get the digest with `docker buildx imagetools inspect ghcr.io/ryami333/ledger-web:<version>`.
+`deploy/README.md` ("Images and releases") tells how to upgrade the homelab host.
+
+Start the release description with a summary of the changes for the user. Use these
+sections, and leave out an empty one:
+
+- **Summary:** two or three sentences about the main change.
+- **New features** and **Changes:** one bullet per change, with the commit hashes.
+- **Upgrade notes:** new migrations, new or changed env variables, and changes to
+  `deploy/compose.yaml`.
+- **Commits:** the list of commits since the previous release.
