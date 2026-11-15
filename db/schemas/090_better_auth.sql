@@ -7,6 +7,10 @@
 -- After a better-auth upgrade, compare it with `getMigrations` of better-auth
 -- (see src/server/auth.ts). The names are snake_case through the
 -- field mapping in auth.ts. better-auth sets created_at and updated_at itself.
+--
+-- The app adds one column: users.role (PLAN.md, D19). auth.ts declares it as
+-- an additional field. A hook sets the role one time, when the user is made.
+-- The default is the role with the fewest rights.
 CREATE SCHEMA IF NOT EXISTS "better_auth";
 
 CREATE TABLE IF NOT EXISTS "better_auth"."users" (
@@ -16,7 +20,8 @@ CREATE TABLE IF NOT EXISTS "better_auth"."users" (
     "email_verified" boolean DEFAULT false NOT NULL,
     "image" "text",
     "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
-    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL
+    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "role" "text" DEFAULT 'guest'::"text" NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS "better_auth"."sessions" (
@@ -64,7 +69,8 @@ ALTER TABLE "better_auth"."verifications" ENABLE ROW LEVEL SECURITY;
 
 ALTER TABLE ONLY "better_auth"."users"
     ADD CONSTRAINT "users_pkey" PRIMARY KEY ("id"),
-    ADD CONSTRAINT "users_email_key" UNIQUE ("email");
+    ADD CONSTRAINT "users_email_key" UNIQUE ("email"),
+    ADD CONSTRAINT "users_role_check" CHECK (("role" = ANY (ARRAY['admin'::"text", 'guest'::"text"])));
 
 ALTER TABLE ONLY "better_auth"."sessions"
     ADD CONSTRAINT "sessions_pkey" PRIMARY KEY ("id"),

@@ -1,9 +1,12 @@
 -- Development seed. `yarn db:reset` loads it after the migrations. It never
 -- runs on the homelab host.
 --
---   - one test user, mitch@mitch-ryan.com. Sign in with Pocket ID. The email
+--   - one admin, mitch@mitch-ryan.com. Sign in with Pocket ID. The email
 --     is the same as the Pocket ID account, thus the first Pocket ID sign-in
 --     links to this user (PLAN.md, D3).
+--   - one guest, delivered@resend.dev, as after an invitation (PLAN.md, D19).
+--     Resend accepts this address for tests, thus a magic link to it sends
+--     no real email.
 --   - the space "Washington" with Barack, Michelle, Donald, and Melania, the
 --     alias "Obamas' Shared Account" (Barack and Michelle), the currencies
 --     EUR (default) and USD, and some transactions in both currencies.
@@ -15,13 +18,10 @@
 
 begin;
 
-insert into better_auth.users (id, name, email, email_verified)
-values (
-  'a0000000-0000-4000-8000-000000000001',
-  'Mitch',
-  'mitch@mitch-ryan.com',
-  true
-);
+insert into better_auth.users (id, name, email, email_verified, role)
+values
+  ('a0000000-0000-4000-8000-000000000001', 'Mitch', 'mitch@mitch-ryan.com', true, 'admin'),
+  ('a0000000-0000-4000-8000-000000000002', 'Kamala', 'delivered@resend.dev', false, 'guest');
 
 insert into public.spaces (id, title, description, created_by, updated_by)
 values (
