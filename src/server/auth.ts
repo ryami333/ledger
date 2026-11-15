@@ -107,7 +107,20 @@ export const auth = betterAuth({
   },
   // On in each environment, so that the limit of the magic link (D18, rule 5)
   // is also active in local tests. The storage is the memory of the process.
-  rateLimit: { enabled: true },
+  // The plugin gives its limit (5 in 10 minutes) also to the verify endpoint.
+  // A token has 32 random characters, thus a guess is not possible. Thus the
+  // verify endpoint gets a looser limit, for users behind one IP address.
+  rateLimit: {
+    enabled: true,
+    customRules: {
+      "/magic-link/verify": {
+        window: Temporal.Duration.from({ minutes: 1 }).total({
+          unit: "seconds",
+        }),
+        max: 10,
+      },
+    },
+  },
   user: {
     modelName: "users",
     fields: { emailVerified: "email_verified", ...timestampFields },
