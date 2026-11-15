@@ -40,3 +40,13 @@ export const slugSchema = z
 export const currencyCodeSchema = z
   .string()
   .refine(isSupportedCurrency, "Select a currency.");
+
+/**
+ * An email address. It removes the spaces at the two ends and changes
+ * capital letters to small letters, as better-auth stores the email.
+ */
+export const emailSchema = z
+  .string()
+  .trim()
+  .toLowerCase()
+  .pipe(z.email("Enter a valid email address."));
