@@ -9,6 +9,7 @@ export const secretEnvNames = [
   "POCKET_ID_CLIENT_SECRET",
   "DATABASE_URL",
   "PGPASSWORD",
+  "RESEND_API_KEY",
 ] as const;
 
 /**

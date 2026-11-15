@@ -71,6 +71,7 @@ services:
       - better_auth_secret
       - pocket_id_client_id
       - pocket_id_client_secret
+      - resend_api_key
     environment:
       APP_URL: https://ledger.mitchryan.org
       APP_LOCALE: en-IE
@@ -84,6 +85,10 @@ services:
       POCKET_ID_ISSUER: https://auth.mitchryan.org
       POCKET_ID_CLIENT_ID_FILE: /run/secrets/pocket_id_client_id
       POCKET_ID_CLIENT_SECRET_FILE: /run/secrets/pocket_id_client_secret
+      # Email for the magic link and the invitations (PLAN.md, D18). An empty
+      # file turns both off.
+      RESEND_API_KEY_FILE: /run/secrets/resend_api_key
+      MAIL_FROM: ledger <noreply@ledger.mitchryan.org>
     networks:
       - ledger-internal
       - cloudflared-net
@@ -155,3 +160,5 @@ secrets:
     file: ./secrets/pocket_id_client_id
   pocket_id_client_secret:
     file: ./secrets/pocket_id_client_secret
+  resend_api_key:
+    file: ./secrets/resend_api_key

@@ -4,6 +4,8 @@ import { describe, expect, it } from "vitest";
 const files = new Map([
   ["/run/secrets/better_auth_secret", "auth-secret\n"],
   ["/run/secrets/postgres_password", "secret\r\n"],
+  ["/run/secrets/resend_api_key", "re_test\n"],
+  ["/run/secrets/empty", ""],
 ]);
 
 const readFile = (path: string): string => {
@@ -26,6 +28,24 @@ describe("readSecretFiles", () => {
         readFile,
       }),
     ).toEqual({ BETTER_AUTH_SECRET: "auth-secret", PGPASSWORD: "secret" });
+  });
+
+  it("reads the API key of Resend", () => {
+    expect(
+      readSecretFiles({
+        env: { RESEND_API_KEY_FILE: "/run/secrets/resend_api_key" },
+        readFile,
+      }),
+    ).toEqual({ RESEND_API_KEY: "re_test" });
+  });
+
+  it("gives an empty text for an empty file", () => {
+    expect(
+      readSecretFiles({
+        env: { RESEND_API_KEY_FILE: "/run/secrets/empty" },
+        readFile,
+      }),
+    ).toEqual({ RESEND_API_KEY: "" });
   });
 
   it("ignores a _FILE variable that is not a secret", () => {

@@ -11,12 +11,13 @@
 # The script does not overwrite a file. A new Postgres password does not
 # change the roles of an existing database.
 #
-# Fill pocket_id_client_id and pocket_id_client_secret by hand.
+# Fill pocket_id_client_id, pocket_id_client_secret, and resend_api_key by
+# hand. An empty resend_api_key turns off the magic link and the invitations.
 set -eu
 
 cd "$(dirname "$0")"
 FILES="postgres_password postgrest_db_uri postgrest_jwt_secret
-better_auth_secret pocket_id_client_id pocket_id_client_secret"
+better_auth_secret pocket_id_client_id pocket_id_client_secret resend_api_key"
 for NAME in $FILES; do
 	if [ -e "secrets/$NAME" ]; then
 		echo "secrets/$NAME exists. Move secrets/ away first." >&2
@@ -41,5 +42,6 @@ openssl rand -hex 32 >secrets/postgrest_jwt_secret
 openssl rand -hex 32 >secrets/better_auth_secret
 : >secrets/pocket_id_client_id
 : >secrets/pocket_id_client_secret
+: >secrets/resend_api_key
 
-echo "Wrote secrets/. Fill pocket_id_client_id and pocket_id_client_secret."
+echo "Wrote secrets/. Fill pocket_id_client_id, pocket_id_client_secret, and resend_api_key."

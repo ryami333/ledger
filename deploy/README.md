@@ -19,7 +19,7 @@ of `postgres`. `rest` and `db-dump` wait until the web app is healthy. The start
 `db`, `ledger-web`, `rest` (PLAN.md, D12).
 
 No part of Supabase runs. better-auth in the web app does the sign-in with Pocket ID
-(PLAN.md, D3).
+(PLAN.md, D3) and with a magic link (PLAN.md, D18). Resend sends the emails.
 
 ## Files
 
@@ -44,13 +44,14 @@ Git ignores `data/` and `secrets/`.
 4. Make the OIDC client in Pocket ID. See [Pocket ID](#pocket-id).
 5. Write the values of `secrets/pocket_id_client_id` and `secrets/pocket_id_client_secret`.
    Put one value in each file.
-6. Set the tag and the digest of `ledger-web` in `compose.yaml`. See
+6. Make the Resend API key, and write it to `secrets/resend_api_key`. See [Email](#email).
+7. Set the tag and the digest of `ledger-web` in `compose.yaml`. See
    [Images and releases](#images-and-releases).
-7. Add the ingress rule to `cloudflared/config.yml`. See [Cloudflared](#cloudflared).
-8. Restart cloudflared: `cd ../cloudflared && make upgrade`.
-9. Run `make up`.
-10. Open `https://ledger.mitchryan.org` and sign in.
-11. Add the Zerobyte mount and the Zerobyte job. See [Backups](#backups).
+8. Add the ingress rule to `cloudflared/config.yml`. See [Cloudflared](#cloudflared).
+9. Restart cloudflared: `cd ../cloudflared && make upgrade`.
+10. Run `make up`.
+11. Open `https://ledger.mitchryan.org` and sign in.
+12. Add the Zerobyte mount and the Zerobyte job. See [Backups](#backups).
 
 ## Secrets
 
@@ -66,6 +67,7 @@ of `compose.yaml`.
 | `better_auth_secret`      | `ledger-web`                  | `BETTER_AUTH_SECRET_FILE`                               |
 | `pocket_id_client_id`     | `ledger-web`                  | `POCKET_ID_CLIENT_ID_FILE`                              |
 | `pocket_id_client_secret` | `ledger-web`                  | `POCKET_ID_CLIENT_SECRET_FILE`                          |
+| `resend_api_key`          | `ledger-web`                  | `RESEND_API_KEY_FILE`                                   |
 
 The web app reads each `<NAME>_FILE` variable in `src/env.ts`, before the validation
 (`src/core/env/readSecretFiles.ts`). It removes the line break at the end of the file. Do
@@ -90,6 +92,41 @@ Make an OIDC client in the Pocket ID admin UI (`https://auth.mitchryan.org`):
   account. better-auth adds a user on the first sign-in.
 
 Register the callback URL by hand. No script does this step.
+
+## Email
+
+The web app sends the magic links and the invitations with Resend (PLAN.md, D18). The
+sender is `MAIL_FROM` in `compose.yaml`, `ledger <noreply@ledger.mitchryan.org>`.
+
+1. In Resend, verify the domain `ledger.mitchryan.org`. Add the DKIM record, and the MX
+   and SPF records of its return-path subdomain, to the DNS of `mitchryan.org`.
+2. Add a DMARC record with `p=none` for the domain if there is none.
+3. Make an API key with **Sending access** for the domain `ledger.mitchryan.org` only.
+4. Write the key to `secrets/resend_api_key`, with no other text.
+
+An empty `secrets/resend_api_key` turns off the magic link and the invitations. Then
+`/login` shows only Pocket ID.
+
+To add the key on a host that exists:
+
+1. Make the file: `install -m 644 /dev/null secrets/resend_api_key`.
+2. Write the key to the file.
+3. Run `make upgrade`. Compose mounts the new secret.
+
+Send one magic link to a Gmail address and to one other provider. Make sure that it does
+not go to spam.
+
+## Users
+
+An admin invites and removes guests on the page `/users` (PLAN.md, D19). An admin cannot
+remove an admin in the UI. To remove a user, also an admin, run this command on the host:
+
+```sh
+docker compose exec ledger-web node src/scripts/removeUser.ts --email <email>
+```
+
+Remove the user in ledger also after you remove the user from the Pocket ID user group.
+Otherwise the user can still sign in with a magic link.
 
 ## Cloudflared
 
