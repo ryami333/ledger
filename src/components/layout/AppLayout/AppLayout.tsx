@@ -9,15 +9,18 @@ const cx = classNames.bind(styles);
 
 /**
  * The shell of each signed-in page: a header with the product name and a
- * menu with the name of the user and "Sign Out".
+ * menu with the name of the user and "Sign Out". For an admin, the menu also
+ * has "Users" (PLAN.md, D19, rule 3).
  */
 export function AppLayout({
   userName,
   userEmail,
+  isAdmin,
   children,
 }: {
   userName: string;
   userEmail: string;
+  isAdmin: boolean;
   children: ReactNode;
 }) {
   const router = useRouter();
@@ -46,6 +49,13 @@ export function AppLayout({
                   {userEmail}
                 </Text>
               </Menu.Label>
+              {isAdmin ? (
+                <Menu.Item
+                  renderRoot={(props) => <Link {...props} to="/users" />}
+                >
+                  Users
+                </Menu.Item>
+              ) : null}
               <Menu.Item onClick={handleSignOut}>Sign Out</Menu.Item>
             </Menu.Dropdown>
           </Menu>

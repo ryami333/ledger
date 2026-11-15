@@ -17,7 +17,11 @@ export const Route = createFileRoute("/_app")({
 function AppRouteComponent() {
   const { user } = Route.useRouteContext();
   return (
-    <AppLayout userName={user.name} userEmail={user.email}>
+    <AppLayout
+      userName={user.name}
+      userEmail={user.email}
+      isAdmin={user.role === "admin"}
+    >
       <Outlet />
     </AppLayout>
   );
