@@ -25,9 +25,17 @@ The space shows the balance of each member in plain English, for example "Barack
 
 Phase 0 copies this glossary into `AGENTS.md`.
 
-- **User:** One row of `better_auth.users`. A person who can sign in with Pocket ID. A user
-  is not a member, but a user can have a linked member in each space. Each user can read and
-  change all spaces.
+- **User:** One row of `better_auth.users`. A person who can sign in with Pocket ID or with
+  a magic link. A user is not a member, but a user can have a linked member in each space.
+  Each user can read and change all spaces.
+- **Role:** `admin` or `guest`, in the column `better_auth.users.role`. The role is set when
+  the user is made, and does not change. The sign-in method of a session does not change it.
+- **Admin:** A user with the role `admin`. The first Pocket ID sign-in of a person makes an
+  admin. An admin can invite and remove guests. An admin can sign in with Pocket ID or with a
+  magic link.
+- **Guest:** A user with the role `guest`. An invitation makes a guest.
+- **Invitation:** The action of an admin that adds a guest and sends an email to the guest.
+- **Magic link:** A link in an email that signs in one user one time.
 - **Space:** One row of `spaces`. A group of members with a shared ledger, for example one
   trip or one household.
 - **Member:** One row of `members`. A name in one space, for example "Barack". A member has
@@ -69,8 +77,9 @@ Phase 0 copies this glossary into `AGENTS.md`.
                  ┌──────────────┐  OIDC   ┌─────────────────────┐
   browser ──────▶│    ledger    │────────▶│ Pocket ID (homelab) │
                  │ TanStack     │         └─────────────────────┘
-                 │ Start        │
-                 └──┬────────┬──┘
+                 │ Start        │  HTTPS  ┌─────────────────────┐
+                 │              │────────▶│ Resend (email)      │
+                 └──┬────────┬──┘         └─────────────────────┘
      PostgREST      │        │  pg (better-auth,
      (user JWT)     ▼        ▼  migrations)
                  ┌──────────────────────────────────────┐
@@ -85,8 +94,10 @@ Phase 0 copies this glossary into `AGENTS.md`.
   of `ledger`. There is no worker and no job queue.
 - **Postgres and PostgREST** hold the data, as in stripclub (stripclub D11). The server
   functions call PostgREST with a short HS256 JWT: `role: authenticated`, `sub: <user ID>`.
-- **better-auth** does the OIDC sign-in with Pocket ID, as in stripclub (stripclub D6). It
-  uses a direct `pg` connection to the schema `better_auth`.
+- **better-auth** does the OIDC sign-in with Pocket ID, as in stripclub (stripclub D6), and
+  the magic link (D18). It uses a direct `pg` connection to the schema `better_auth`.
+- **Resend** sends the magic links and the invitations (D18). The app calls it in the
+  request.
 - **`src/core`** holds the money logic with no I/O: the parse and the format of amounts,
   the currency conversion, the split into shares, and the balances.
 
@@ -136,7 +147,8 @@ only one app and no worker, thus workspaces give no advantage. The folders `src/
   `pocket-id`, PKCE). The callback URL is `<APP_URL>/api/auth/callback/pocket-id`. Copy
   `apps/web/src/server/auth.ts` of stripclub to `src/server/auth.ts`.
 - The OIDC client of `ledger` in Pocket ID allows only one Pocket ID user group. Thus Pocket
-  ID decides who has access. There is no email or password sign-in, and no invitation.
+  ID decides who becomes an admin. There is no email or password sign-in. An admin can
+  invite a guest, who signs in with a magic link (D18, D19).
 - A user is not a member. A user can select a linked member in each space (D16).
 - Each user can read and change all spaces. The RLS policies allow each operation to the role
   `authenticated`, with no row condition. The role `anon` has no grant.
@@ -541,6 +553,107 @@ the MCP server must know which space the user means. Thus a user can select a de
   call with no `space` uses the default space, then the only space. Otherwise the tool gives
   an error that tells the client to ask the user.
 
+### D18: Sign-in with a magic link
+
+A person with no Pocket ID account signs in with a link in an email. better-auth has the
+plugin `magicLink()`. It adds `POST /api/auth/sign-in/magic-link` and
+`GET /api/auth/magic-link/verify`, and keeps the token in `better_auth.verifications`.
+
+1. **Pocket ID stays.** `/login` shows "Sign In with Pocket ID" and a form for the magic
+   link.
+2. **Only known users.** `disableSignUp: true`. A magic link signs in a user that exists.
+   It never makes a user. Only an invitation makes a guest (D19).
+3. **No email to an unknown address.** better-auth calls `sendMagicLink` for each address.
+   Thus `sendMagicLink` looks up the email in `better_auth.users`, and sends nothing if no
+   user has it. The endpoint gives the same answer in both cases. The send does not block
+   the answer, thus the duration of the answer also does not tell if the user exists.
+4. **A confirm page between the email and the verify.** The verify endpoint is a `GET`,
+   and a mail scanner (for example Outlook Safe Links) can open a link before the user. Thus
+   the email links to `<APP_URL>/auth/magic-link?token=…&next=…`. This page shows one button,
+   "Sign In to ledger", in a `<form method="get">` to `/api/auth/magic-link/verify`. A scanner
+   opens the page, but does not submit the form. The page sends no referrer.
+5. **Token settings and rate limit.** `expiresIn` 15 minutes, `storeToken: "hashed"`. Each
+   token gives one session only: the verify endpoint consumes it on the first request. The
+   send allows 5 requests in 10 minutes for each IP address. The verify endpoint allows 10
+   requests each minute, because users behind one IP address share the limit, and a token
+   of 32 random characters cannot be guessed. The rate limit is on in each environment, in
+   the memory of the process. `advanced.ipAddress.ipAddressHeaders` is
+   `["cf-connecting-ip", "x-forwarded-for"]`. Only `auth.handler` applies the rate limit,
+   not `auth.api`. Thus `requestMagicLinkServerFn` sends its request through
+   `auth.handler`.
+6. **MCP authorization.** `/auth/sign-in` stays the login page of the OAuth server (D15).
+   When it gets a signed query (`sig`) and the magic link is on, it sends the browser to
+   `/login?oauth_query=<the signed query>`. The Pocket ID button there goes back to
+   `/auth/sign-in` with the query and `sign_in_with=pocket-id`. The magic-link server
+   function verifies the signature with `verifyOAuthQueryParams`. Then it sets the
+   `callbackURL` to `/api/auth/oauth2/authorize?<the query>`, with no signature
+   parameters, no prompt `login`, and no `max_age` (`oauthQueryToAuthorizePath`). After the
+   verify, the browser opens the authorize endpoint with a session, and the authorization
+   continues to `/oauth/consent`. Reason: better-auth keeps the signed query only for one
+   request, or in the state of a social sign-in. Limit: the user must open the link in the
+   same browser as the MCP client.
+7. **Email delivery with Resend.** Send each email with the Resend SDK (`resend`), in the
+   request (no job queue). The env has `RESEND_API_KEY` and `MAIL_FROM` (default
+   `ledger <noreply@ledger.mitchryan.org>`). The API key has "Sending access" for the
+   domain `ledger.mitchryan.org` only. If `RESEND_API_KEY` is not set, the magic link and
+   the invitation are off, `/login` shows only Pocket ID, and the verify endpoint does not
+   exist.
+8. **Logs.** Log the user ID (or "no user"), the duration, and the ID or the error code
+   that Resend gives. Do not log the email address, the token, or the URL.
+9. **Local development sends real email.** The local `.env` has a key, thus a local magic
+   link goes through Resend. Use your own address, or the Resend test address
+   `delivered@resend.dev` (also with a label, `delivered+name@resend.dev`), for tests.
+
+Rejected:
+
+- **SMTP with `nodemailer`.** It is not specific to a provider, but it needs a second
+  package and a URL with the key in it. Resend is the only provider. A change of provider
+  changes only `src/server/sendEmail.ts`.
+- **Mailpit in the local stack.** The Resend key is already in `.env`. Add Mailpit later if
+  the free limit of Resend is a problem.
+- **Email OTP (`emailOTP()`).** A code works across devices, and no scanner can consume it.
+  But the user must type the code. Keep it as an option if rule 6 is a problem.
+
+### D19: Roles and invitations
+
+1. **Two roles, set when the user is made.** The column `better_auth.users.role` is `text`,
+   `not null`, `default 'guest'`, with a check `role in ('admin', 'guest')`. `auth.ts`
+   declares it as an additional field with `input: false`, thus no client request can set
+   it. The hook `databaseHooks.user.create.before` sets `admin` only when the endpoint is
+   the Pocket ID callback (`/callback/:id` with `id = "pocket-id"`,
+   `resolveRoleOnUserCreate`). Each other way to make a user (an invitation, a script)
+   gives `guest`. The default is the role with the fewest rights, thus an unknown path
+   cannot make an admin. After this, nothing changes the role: no hook, no UI, and no later
+   sign-in.
+2. **The role belongs to the user, not to the session.** An admin can sign in with Pocket ID
+   or with a magic link, and is an admin in both cases. A Pocket ID sign-in with the email
+   of a guest links the account to the guest (`accountLinking` trusts `pocket-id`). No
+   user is made, thus the guest stays a guest.
+3. **Only an admin invites.** The page `/users` lists the users with their role. An admin
+   sees "Invite User" and "Remove" (for a guest). A guest gets the "not found" state of the
+   view, and the menu shows no "Users" item.
+4. **An invitation.** The admin gives a name and an email. The server function makes the
+   user with `email_verified = false`, then sends the invitation email: "<Admin name>
+   invited you to ledger", with a link to `<APP_URL>/login`. The email has no token. The
+   guest asks for a magic link on `/login`. Reason: an invitation can stay in an inbox for
+   days, but a magic link expires in 15 minutes. If the email exists, the server function
+   gives an error and sends nothing. If the send fails, it deletes the new user again. The
+   first magic link of the guest sets `email_verified = true`.
+5. **A remove.** An admin can remove a guest. The delete of the user deletes the sessions,
+   the accounts, the OAuth tokens, the linked members, and the default space of the guest.
+   The transactions of the guest stay, with `created_by` set to null. An admin cannot remove
+   an admin or itself in the UI.
+6. **Access to the spaces does not change.** A guest can read and change all spaces, as an
+   admin can (D3). An MCP client of a guest has the same tools. The roles control only the
+   users.
+7. **Check the role in the server.** The tables of `better_auth` are not in PostgREST, and
+   RLS cannot see them. Thus `adminMiddleware` reads `role` from the session user, and
+   refuses a user that is not an admin with `403`. This is the one exception to "Let RLS
+   control each query for a user" in `AGENTS.md`.
+8. **A removed admin.** When an admin leaves the Pocket ID user group, the user row stays.
+   The user can then still sign in with a magic link, as an admin. Thus remove the user in
+   ledger too: `yarn user:remove --email <email>`.
+
 ## Data model
 
 All tables are in `public`. Each table has `created_at` and `updated_at`, which triggers set.
@@ -573,6 +686,8 @@ member_id)`. Foreign keys `(space_id, alias_id)` to `aliases` and `(space_id, me
   `(transaction_id, side, alias_id)`. Composite foreign keys to `transactions`, `members`, and
   `aliases` keep the party in the space of its transaction.
 - **`app_users`** (view): `id`, `name`, `image` of `better_auth.users`.
+- **`better_auth.users.role`**: `admin` or `guest`, default `guest` (D19). It is the only
+  column that the app adds to a table of better-auth.
 
 Foreign keys:
 
@@ -605,7 +720,15 @@ transaction, also for a direct write through PostgREST:
 
 All pages use Mantine, inside one `AppShell` with the product name and a sign-out menu.
 
-- **`/login`**: one button, "Sign In with Pocket ID".
+- **`/login`**: "Sign In with Pocket ID", and, when email is on, an email field with the
+  button "Email Me a Sign-In Link" (D18). After a send, the page shows the same text for a
+  known and an unknown address.
+- **`/auth/magic-link`** (`MagicLinkConfirmView`): the link in the email opens it. One
+  button, "Sign In to ledger", sends the token to the verify endpoint (D18, rule 4).
+- **`/users`** (`UsersView`): only for an admin. A table of the users (name, email, role,
+  date), "Invite User" (`InviteUserModal`: name and email, "Send Invitation"), and "Remove"
+  for each guest (`ConfirmModal`, "Remove Guest"). The user menu has "Users" for an admin
+  only (D19).
 - **`/`** (`SpacesView`): the spaces as cards (title, description, member count, date of the
   last transaction). A "New Space" button opens a modal: title, slug (from the title until
   the user changes it), description, default currency, and the first member names.
@@ -1070,6 +1193,90 @@ Open questions:
   change all spaces (D3).
 - Must a transaction from an MCP client show its source in the UI? The first version has no
   mark. A change history is on the roadmap.
+
+### Phase 8: Magic link, roles, and invitations
+
+See D18 and D19.
+
+- [x] Packages and env: `resend`. `RESEND_API_KEY` and `MAIL_FROM` in `src/env.ts`,
+      `readSecretFiles`, and `.env.example`.
+- [x] `0011_user_roles.sql`: the column `role` of `better_auth.users`, with its check. The
+      migration gives `admin` to each user with a `pocket-id` account. The seed has one
+      admin and one guest (`delivered@resend.dev`). A pgTAP test checks the default and the
+      check. `getMigrations` of better-auth finds no difference.
+- [x] Pure logic with unit tests: `src/core/auth` (`userRoles`, `pocketIdProviderId`,
+      `resolveRoleOnUserCreate`, `buildMagicLinkConfirmUrl`, `oauthQueryToAuthorizePath`),
+      `src/core/forms` (`magicLinkRequestSchema`, `inviteUserSchema`, `emailSchema`), and
+      `src/core/email` (`renderMagicLinkEmail`, `renderInvitationEmail`, `escapeHtml`).
+- [x] Server: the role field and the create hook, `magicLink()`, the rate limit, and
+      `advanced.ipAddress` in `auth.ts`. `sendEmail`, `adminMiddleware`, and the role in
+      `SessionUser`. The server functions `getAuthMethodsServerFn`,
+      `requestMagicLinkServerFn`, `listUsersServerFn`, `inviteUserServerFn`, and
+      `removeUserServerFn`.
+- [x] Routes and views: the magic-link form in `LoginView`, `/auth/magic-link` with
+      `MagicLinkConfirmView`, the hand-off of `/auth/sign-in` to `/login`, `/users` with
+      `UsersView` and `InviteUserModal`, and "Users" in the menu of an admin.
+- [x] Deployment files: the secret `resend_api_key` in `deploy/compose.yaml` and
+      `deploy/generate-secrets.sh`, and the sections "Email" and "Users" in
+      `deploy/README.md`.
+- [x] `yarn user:remove --email <email>` (`src/scripts/removeUser.ts`).
+- [x] Test against the local stack (see the notes).
+- [ ] Test with a real Pocket ID sign-in: a new Pocket ID user (a second account in the
+      user group of "Ledger Local") gets `admin`. A guest whose email has a Pocket ID
+      account signs in with Pocket ID, and stays a guest.
+- [ ] Resend: add a DMARC record with `p=none` for `ledger.mitchryan.org` if there is none.
+- [ ] Release as `minor`. The upgrade notes name `RESEND_API_KEY`, `MAIL_FROM`, the secret
+      `resend_api_key`, and the DNS records. Then make `secrets/resend_api_key` on the host.
+- [ ] On the host, send one magic link to a Gmail address and to one other provider. Make
+      sure that it does not go to spam.
+
+Notes:
+
+- The domain `ledger.mitchryan.org` is verified in Resend: a local send from
+  `noreply@ledger.mitchryan.org` to `delivered@resend.dev` got an email ID.
+- Tested in the browser against the local stack. An unknown email got no email
+  (`sendMagicLink skipped`), and the UI showed the same text as for a known email. A known
+  email in capital letters got one email. The confirm page GET kept the token. Its button
+  signed in the user, and opened `next`. The page has `referrer: no-referrer`.
+- To sign in without the email, the test put a token row in `better_auth.verifications`,
+  as the plugin does: `magic-link:` and the SHA-256 of the token in base64url.
+- The admin signed in with a magic link, was still an admin, and saw "Users". The admin
+  invited `delivered+invite@resend.dev`: one invitation email, and a new guest. The same
+  email again gave "A user with this email exists." and no email.
+- The guest signed in with a magic link: the role stayed `guest`, and `email_verified`
+  became true. The guest saw no "Users" item, and `/users` showed "not found". A direct
+  call of `inviteUserServerFn`, `listUsersServerFn`, and `removeUserServerFn` gave `403`.
+- A used token and an expired token opened `/login?error=INVALID_TOKEN` with the error
+  text. The sixth send request in 10 minutes got `429` and its text. The first version
+  also gave the verify endpoint 5 requests in 10 minutes, and a sixth sign-in in a test
+  got a JSON page with `429`. Thus the verify endpoint got its own limit (D18, rule 5).
+- The admin removed the guest. The session of the guest (a separate cookie jar) then gave
+  `null`, and the space that the guest made stayed, with `created_by` null.
+- MCP: an authorize request of the Claude Code client with no session went to
+  `/auth/sign-in`, then to `/login?oauth_query=…`. A changed signed query gave an error.
+  The real query sent the email. The confirm page with `next` set to the authorize path
+  signed in the guest, and opened `/oauth/consent` for Claude Code. "Sign In with Pocket
+  ID" with the signed query went to Pocket ID, as before.
+- `/login` reads the signed query from the router, as the one search param `oauth_query`.
+  The router keeps the value of one text param as it is. The Phase 7 problem was a
+  signed query split into many params. The test above confirms that the signature stays
+  valid.
+- With an empty `RESEND_API_KEY`, the build showed only "Sign In with Pocket ID" on
+  `/login`, and the verify endpoint gave `404`.
+
+Open questions:
+
+- **MCP from another device.** Is "same browser only" (D18, rule 6) acceptable? If not, use
+  email OTP for the OAuth login page.
+- **What can a guest do?** D19 keeps D3: a guest can read and change all spaces. A later
+  step can limit a guest to some spaces (roadmap: "Access for some users only to some
+  spaces").
+- **A removed admin.** Is `yarn user:remove` enough? A user removed from the Pocket ID user
+  group can still sign in with a magic link, as an admin, until the script deletes the user.
+- **A guest that becomes an admin.** The role does not change. To make a guest an admin, an
+  operator must update `role` in the database by hand. Is a script for this necessary?
+- **Session length.** A session uses the default of better-auth (7 days). Is this correct
+  for a guest?
 
 ## Roadmap
 

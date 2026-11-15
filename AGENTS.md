@@ -9,7 +9,7 @@ The space shows the balance of each member in plain English, for example "Barack
 ## Start here
 
 Read [`PLAN.md`](PLAN.md) before you start a task. It holds the architecture, the data model,
-the decisions (D1 to D17), and the phases. Update `PLAN.md` when a decision changes or a phase
+the decisions (D1 to D19), and the phases. Update `PLAN.md` when a decision changes or a phase
 is complete.
 
 The repository is new. Some files and commands in this document do not exist yet. They show
@@ -20,9 +20,17 @@ the target state. When you add one of them, follow this document.
 These terms have a specific meaning in this project. Use them with this meaning in code,
 comments, docs, and chat.
 
-- **User:** One row of `better_auth.users`. A person who can sign in with Pocket ID. A user
-  is not a member, but a user can have a linked member in each space. Each user can read and
-  change all spaces.
+- **User:** One row of `better_auth.users`. A person who can sign in with Pocket ID or with
+  a magic link. A user is not a member, but a user can have a linked member in each space.
+  Each user can read and change all spaces.
+- **Role:** `admin` or `guest`, in the column `better_auth.users.role`. The role is set when
+  the user is made, and does not change. The sign-in method of a session does not change it.
+- **Admin:** A user with the role `admin`. The first Pocket ID sign-in of a person makes an
+  admin. An admin can invite and remove guests. An admin can sign in with Pocket ID or with a
+  magic link.
+- **Guest:** A user with the role `guest`. An invitation makes a guest.
+- **Invitation:** The action of an admin that adds a guest and sends an email to the guest.
+- **Magic link:** A link in an email that signs in one user one time.
 - **Space:** One row of `spaces`. A group of members with a shared ledger, for example one
   trip or one household.
 - **Member:** One row of `members`. A name in one space, for example "Barack". A member has
@@ -102,9 +110,12 @@ style also for commit messages, pull-request descriptions, and reviews. Obey the
 - **Data access:** `@supabase/postgrest-js`, with types from `supabase/postgres-meta`. The
   client signs a short HS256 JWT for each request: `role: authenticated`,
   `sub: <user ID>`. Do not add `@supabase/supabase-js`.
-- **Sign-in:** better-auth in the web app, with the self-hosted Pocket ID as its only
-  provider (generic OIDC, provider ID `pocket-id`). The tables are in the schema
-  `better_auth`. There is no email or password sign-in. See `PLAN.md` (D3).
+- **Sign-in:** better-auth in the web app, with two methods: the self-hosted Pocket ID
+  (generic OIDC, provider ID `pocket-id`) and a magic link (plugin `magicLink`). The tables
+  are in the schema `better_auth`. There is no email or password sign-in. See `PLAN.md`
+  (D3, D18, and D19).
+- **Email:** the Resend SDK (`resend`) in `src/server/sendEmail.ts`, for the magic links
+  and the invitations. With no `RESEND_API_KEY`, both are off. See `PLAN.md` (D18).
 - **Migrations:** pg-delta writes them from the schema files.
 - **Tests:** Vitest for TypeScript, pgTAP for the database.
 - **Release:** release-it and a GitHub workflow that builds the Docker image
@@ -185,6 +196,7 @@ yarn db:diff <name>   # Write a migration from the schema files (pg-delta)
 yarn db:test          # pgTAP tests in a new database, ledger_test
 yarn db:psql          # psql in the local database
 yarn generate         # Generate database types into src/db (postgres-meta)
+yarn user:remove --email <email>  # Remove a user, also an admin (PLAN.md, D19)
 yarn release          # release-it: bump, tag, GitHub release; the tag publishes the image
 ```
 
@@ -266,6 +278,12 @@ query with a client that ignores RLS.
 
 If no policy allows the query, add a policy. Add a pgTAP test for the permitted query and for
 the role `anon`.
+
+There is one exception: the users and their roles (`PLAN.md`, D19, rule 7). The tables of
+`better_auth` are not in PostgREST, and RLS cannot see them. Thus a server function that
+reads or changes users uses `adminMiddleware`, and better-auth (`auth.$context`) for the
+query. `adminMiddleware` reads the role of the session user, and refuses a user that is not
+an admin with `403`. Do not use this exception for a table in `public`.
 
 Remember these RLS rules:
 
