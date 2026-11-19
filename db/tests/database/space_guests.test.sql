@@ -1,13 +1,14 @@
 -- Checks the access of a guest (PLAN.md, D20). Guest C has space A only.
--- The guest reads and changes space A, and sees nothing of space B. Only an
--- admin makes a space and writes space_guests.
+-- The guest reads space A and changes its rows, and sees nothing of space B.
+-- Only an admin makes, changes, and deletes a space, and writes
+-- space_guests.
 
 begin;
 
 \ir helpers.psql
 \ir fixtures.psql
 
-select plan(22);
+select plan(25);
 
 -- The current user
 
@@ -78,6 +79,25 @@ select is_empty(
 select is_empty(
   $$ delete from public.spaces where id = '10000000-0000-0000-0000-00000000000b' returning id $$,
   'delete.spaces: a guest cannot delete a different space'
+);
+
+select is_empty(
+  $$ update public.spaces set title = 'Renamed'
+     where id = '10000000-0000-0000-0000-00000000000a'
+     returning id $$,
+  'update.spaces: a guest cannot rename a space of the guest'
+);
+
+select is_empty(
+  $$ delete from public.spaces where id = '10000000-0000-0000-0000-00000000000a' returning id $$,
+  'delete.spaces: a guest cannot delete a space of the guest'
+);
+
+select isnt_empty(
+  $$ update public.space_currencies set rate = 0.9
+     where space_id = '10000000-0000-0000-0000-00000000000a' and currency = 'USD'
+     returning currency $$,
+  'update.space_currencies: a guest changes a rate in a space of the guest'
 );
 
 select throws_ok(

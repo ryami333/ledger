@@ -18,7 +18,8 @@ import { Link } from "@tanstack/react-router";
  * The page `/spaces/$spaceSlug/settings`: the details, the default space
  * (D17), the members, the
  * aliases, and the currencies of a space, the CSV import, and the delete of
- * the space (PLAN.md, UI).
+ * the space (PLAN.md, UI). A guest does not see the details and the delete
+ * of the space, because only an admin can change them (D20).
  */
 export function SpaceSettingsView({
   locale,
@@ -26,12 +27,15 @@ export function SpaceSettingsView({
   members,
   aliases,
   currencies,
+  canManageSpace,
 }: {
   locale: string;
   space: SettingsSpace;
   members: SettingsMember[];
   aliases: SettingsAlias[];
   currencies: SettingsCurrency[];
+  /** True for an admin. */
+  canManageSpace: boolean;
 }) {
   return (
     <Stack gap="xl">
@@ -50,10 +54,12 @@ export function SpaceSettingsView({
         </Anchor>
         <Title order={1}>Settings</Title>
       </Stack>
-      <SpaceDetailsSection
-        key={`${space.title}\n${space.description}\n${space.slug}`}
-        space={space}
-      />
+      {canManageSpace ? (
+        <SpaceDetailsSection
+          key={`${space.title}\n${space.description}\n${space.slug}`}
+          space={space}
+        />
+      ) : null}
       <DefaultSpaceSection spaceId={space.id} isDefault={space.isDefault} />
       <MembersSection spaceId={space.id} members={members} />
       <AliasesSection spaceId={space.id} members={members} aliases={aliases} />
@@ -74,7 +80,7 @@ export function SpaceSettingsView({
         }
         members={members}
       />
-      <DangerZoneSection space={space} />
+      {canManageSpace ? <DangerZoneSection space={space} /> : null}
     </Stack>
   );
 }

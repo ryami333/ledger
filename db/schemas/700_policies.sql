@@ -1,15 +1,17 @@
 -- The RLS policies (PLAN.md, D3 and D20). An admin reads and changes all
 -- spaces. A guest reads and changes only the spaces of the guest in
--- space_guests. can_access_space checks both cases. Only an admin makes a
--- space. The grants (800_grants.sql) select the columns. The role anon has
+-- space_guests. can_access_space checks both cases. Only an admin makes,
+-- changes, and deletes the row of a space. A guest changes the members, the
+-- aliases, the currencies, and the transactions of a space of the guest. The
+-- grants (800_grants.sql) select the columns. The role anon has
 -- no grant, thus it has no policy here.
 
 -- spaces
 
 CREATE POLICY "spaces_select_authenticated" ON "public"."spaces" FOR SELECT TO "authenticated" USING ("public"."can_access_space"("id"));
 CREATE POLICY "spaces_insert_authenticated" ON "public"."spaces" FOR INSERT TO "authenticated" WITH CHECK ("public"."current_user_is_admin"());
-CREATE POLICY "spaces_update_authenticated" ON "public"."spaces" FOR UPDATE TO "authenticated" USING ("public"."can_access_space"("id")) WITH CHECK ("public"."can_access_space"("id"));
-CREATE POLICY "spaces_delete_authenticated" ON "public"."spaces" FOR DELETE TO "authenticated" USING ("public"."can_access_space"("id"));
+CREATE POLICY "spaces_update_authenticated" ON "public"."spaces" FOR UPDATE TO "authenticated" USING ("public"."current_user_is_admin"()) WITH CHECK ("public"."current_user_is_admin"());
+CREATE POLICY "spaces_delete_authenticated" ON "public"."spaces" FOR DELETE TO "authenticated" USING ("public"."current_user_is_admin"());
 
 -- space_currencies
 

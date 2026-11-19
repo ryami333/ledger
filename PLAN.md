@@ -32,7 +32,8 @@ Phase 0 copies this glossary into `AGENTS.md`.
 - **Role:** `admin` or `guest`, in the column `better_auth.users.role`. The role is set when
   the user is made, and does not change. The sign-in method of a session does not change it.
 - **Admin:** A user with the role `admin`. The first Pocket ID sign-in of a person makes an
-  admin. An admin can invite and remove guests, and only an admin can make a space. An admin
+  admin. An admin can invite and remove guests, and only an admin can make, rename, or
+  delete a space. An admin
   can sign in with Pocket ID or with a sign-in code.
 - **Guest:** A user with the role `guest`. An invitation makes a guest.
 - **Space guest:** One row of `space_guests`. A space that one guest can read and change.
@@ -696,9 +697,12 @@ changes all spaces, as in D3.
    `SECURITY DEFINER` function in `public`, because `authenticated` cannot read
    `better_auth`. The web app and the MCP server need no change: RLS removes the other
    spaces from each query.
-3. **Only an admin makes a space.** The insert policy of `spaces` calls
-   `current_user_is_admin()`. `SpacesView` shows "New Space" only to an admin. A guest
-   can still rename and delete a space of the guest.
+3. **Only an admin makes, changes, and deletes a space.** The insert, update, and delete
+   policies of `spaces` call `current_user_is_admin()` (`0013_guest_space_details.sql`).
+   `SpacesView` shows "New Space" only to an admin. The settings page hides the details
+   (title, slug, description) and the danger zone from a guest. `updateSpaceServerFn` and
+   `deleteSpaceServerFn` refuse a guest with `403`. A guest still changes the members, the
+   aliases, the currencies and rates, and the transactions of a space of the guest.
 4. **Only an admin writes `space_guests`.** `set_space_guests(p_user_id, p_space_ids)`
    replaces the spaces of a guest. It refuses a user that is not an admin with `42501`. A
    guest reads only the rows of the guest itself.
@@ -716,7 +720,10 @@ Rejected:
 
 - **Access from the linked member.** The invitation would need a member for each space,
   and a new member changes the balances of the space.
-- **A guest that makes a space.** It was decided that only an admin makes a space.
+- **A guest that makes, renames, or deletes a space.** A guest joins a space, but does not
+  own it. A delete of a shared space is too easy for a guest.
+- **Admin-only members, aliases, and currencies.** On a trip, a guest often must add a
+  member or a currency before the guest can record a payment.
 
 ## Data model
 
@@ -1394,9 +1401,10 @@ See D20.
       `space_guests.test.sql`. The fixtures make users A and B admins, and add guest C.
 - [x] Server: `setSpaceGuests`, `setGuestSpacesServerFn`, the spaces in
       `inviteUserServerFn` and `listUsersServerFn`, and the admin check in
-      `createSpaceServerFn`.
+      `createSpaceServerFn`, `updateSpaceServerFn`, and `deleteSpaceServerFn`.
 - [x] UI: `GuestSpacesInput` in `InviteUserModal` and `EditGuestSpacesModal`, the column
-      "Spaces" on `/users`, and no "New Space" for a guest.
+      "Spaces" on `/users`, no "New Space" for a guest, and no details and danger zone in
+      the settings of a guest.
 - [x] Test against the local stack (see the notes).
 - [ ] Release as `minor`. The upgrade notes tell that each guest keeps only the spaces with
       a linked member of the guest.
