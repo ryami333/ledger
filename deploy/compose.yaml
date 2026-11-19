@@ -61,7 +61,7 @@ services:
   ledger-web:
     # Set the tag and the digest after each release (README.md, "Images and
     # releases").
-    image: ghcr.io/ryami333/ledger-web:0.7.0@sha256:5c3ce4d88ab0adc17fc03d893a67f96cba21cd4b9937e518740def713df70550
+    image: ghcr.io/ryami333/ledger-web:0.8.0@sha256:9e6ff753c0ead374f25618c754062da221d3c5d884cf38bce760faefab2d2c6a
     platform: linux/amd64
     restart: unless-stopped
     init: true
