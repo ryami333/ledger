@@ -8,6 +8,9 @@ export type AccountSettings = Awaited<
 /** One space on the tab "MCP", with the choices of the signed-in user. */
 export type AccountSpace = AccountSettings["spaces"][number];
 
+/** One OAuth client that the signed-in user made for mcp-remote (D15). */
+export type McpRemoteClient = AccountSettings["mcpRemoteClients"][number];
+
 /** The tabs of the page `/account`. The search param `tab` holds one. */
 export const accountSettingsTabs = ["profile", "mcp"] as const;
 

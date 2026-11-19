@@ -1,12 +1,14 @@
 import { env } from "../env.ts";
-import { mcpResourceUrl } from "../server/auth.ts";
+import { auth, mcpResourceUrl } from "../server/auth.ts";
 import { authMiddleware } from "../server/authMiddleware.ts";
 import { throwDatabaseError } from "../server/throwDatabaseError.ts";
 import { createServerFn } from "@tanstack/react-start";
+import { getRequestHeaders } from "@tanstack/react-start/server";
+import { Temporal } from "temporal-polyfill";
 
 /**
  * Returns the data of the page `/account`: the URL of the MCP server
- * (PLAN.md, D15), and for each space the members, the linked member of the
+ * (PLAN.md, D15), the mcp-remote clients of the user, and for each space the members, the linked member of the
  * signed-in user (D16), and whether it is the default space (D17).
  */
 export const getAccountSettingsServerFn = createServerFn({ method: "GET" })
@@ -28,9 +30,35 @@ export const getAccountSettingsServerFn = createServerFn({ method: "GET" })
         messages: { fallback: "The account settings cannot be read." },
       });
     }
+    // The OAuth clients that the user made for mcp-remote (D15). A client of
+    // a Claude app has no owner, thus it is not in this list.
+    const ownClients = await auth.api.getOAuthClients({
+      headers: getRequestHeaders(),
+    });
     const appHostname = new URL(env.APP_URL).hostname;
     return {
       mcpUrl: mcpResourceUrl,
+      locale: env.APP_LOCALE,
+      mcpRemoteClients: (ownClients ?? [])
+        .toSorted(
+          (first, second) =>
+            (first.client_id_issued_at ?? 0) -
+            (second.client_id_issued_at ?? 0),
+        )
+        .map((client) => ({
+          clientId: client.client_id,
+          createdDate:
+            client.client_id_issued_at === undefined
+              ? null
+              : Temporal.Instant.fromEpochMilliseconds(
+                  Temporal.Duration.from({
+                    seconds: client.client_id_issued_at,
+                  }).total({ unit: "milliseconds" }),
+                )
+                  .toZonedDateTimeISO(env.APP_TIME_ZONE)
+                  .toPlainDate()
+                  .toString(),
+        })),
       // The hosted Claude apps cannot reach a local server (D15).
       isLocalServer: ["localhost", "127.0.0.1", "[::1]"].includes(appHostname),
       spaces: (data ?? []).map((space) => {

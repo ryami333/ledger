@@ -2,6 +2,7 @@ import type { SessionUser } from "../../../server/getSessionUser.ts";
 import type {
   AccountSettingsTab,
   AccountSpace,
+  McpRemoteClient,
 } from "./AccountSettingsView.types.ts";
 import { McpPanel } from "./McpPanel.tsx";
 import { ProfilePanel } from "./ProfilePanel.tsx";
@@ -18,12 +19,16 @@ export function AccountSettingsView({
   user,
   mcpUrl,
   isLocalServer,
+  locale,
+  mcpRemoteClients,
   spaces,
 }: {
   tab: AccountSettingsTab;
   user: SessionUser;
   mcpUrl: string;
   isLocalServer: boolean;
+  locale: string;
+  mcpRemoteClients: McpRemoteClient[];
   spaces: AccountSpace[];
 }) {
   const navigate = useNavigate();
@@ -54,6 +59,8 @@ export function AccountSettingsView({
           <McpPanel
             mcpUrl={mcpUrl}
             isLocalServer={isLocalServer}
+            locale={locale}
+            mcpRemoteClients={mcpRemoteClients}
             spaces={spaces}
           />
         </Tabs.Panel>

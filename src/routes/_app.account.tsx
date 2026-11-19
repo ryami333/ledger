@@ -24,6 +24,8 @@ function AccountRouteComponent() {
       user={user}
       mcpUrl={settings.mcpUrl}
       isLocalServer={settings.isLocalServer}
+      locale={settings.locale}
+      mcpRemoteClients={settings.mcpRemoteClients}
       spaces={settings.spaces}
     />
   );

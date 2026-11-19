@@ -1,6 +1,10 @@
-import type { AccountSpace } from "./AccountSettingsView.types.ts";
+import type {
+  AccountSpace,
+  McpRemoteClient,
+} from "./AccountSettingsView.types.ts";
 import { AccountSection } from "./AccountSection.tsx";
 import { CopyField } from "./CopyField.tsx";
+import { McpRemoteSection } from "./McpRemoteSection.tsx";
 import { SpacePreferencesSection } from "./SpacePreferencesSection.tsx";
 import {
   Alert,
@@ -23,16 +27,21 @@ const examplePrompts = [
 
 /**
  * The tab "MCP" of the page `/account` (PLAN.md, D15). It gives the URL of
- * the MCP server, the steps for each client, the choices that let Claude
- * understand "me" and "my space" (D16, D17), and prompts to try.
+ * the MCP server, the steps for each client, the setup of mcp-remote, the
+ * choices that let Claude understand "me" and "my space" (D16, D17), and
+ * prompts to try.
  */
 export function McpPanel({
   mcpUrl,
   isLocalServer,
+  locale,
+  mcpRemoteClients,
   spaces,
 }: {
   mcpUrl: string;
   isLocalServer: boolean;
+  locale: string;
+  mcpRemoteClients: McpRemoteClient[];
   spaces: AccountSpace[];
 }) {
   const [client, setClient] = useState<"claude" | "claude-code">(
@@ -103,6 +112,11 @@ export function McpPanel({
           on a different device, for example your phone.
         </Text>
       </AccountSection>
+      <McpRemoteSection
+        mcpUrl={mcpUrl}
+        locale={locale}
+        clients={mcpRemoteClients}
+      />
       <SpacePreferencesSection spaces={spaces} />
       <AccountSection
         title="Try it"

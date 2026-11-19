@@ -417,6 +417,20 @@ Authorization:
   Claude identifies itself with a Client ID Metadata Document (`@better-auth/cimd`, profile
   `mcp-2026-07-28`). Dynamic Client Registration stays off. `isClaudeClientMetadataUrl` lets
   the plugin fetch a document only from `https://claude.ai` or `https://claude.com`.
+- mcp-remote is for a Claude organization that does not allow custom connectors. It starts in
+  Claude Desktop as a local server. It does not use the CIMD of Claude, thus it tries DCR, and
+  fails. Instead, a signed-in user makes a public client on `/account` with "Create Client".
+  The server function calls `POST /api/auth/oauth2/create-client` of better-auth with the
+  session of the user. This endpoint needs a session, and does not depend on DCR. Thus DCR
+  stays off. The client has `token_endpoint_auth_method: "none"`, the application type
+  `native`, and the redirect URIs `http://localhost/oauth/callback` and
+  `http://127.0.0.1/oauth/callback`. better-auth ignores the port of a loopback redirect URI,
+  thus each port of mcp-remote matches. The user gives the client ID to mcp-remote with
+  `--static-oauth-client-info`. The user still signs in and allows the access.
+- The clients are in `better_auth`, not in PostgREST. Thus the server functions use
+  `auth.api` with the session of the request, as the exception of D19, rule 7. better-auth
+  checks the owner (`user_id`) of a client for the list and the delete. A delete deletes the
+  refresh tokens and the consents. An access token stays valid until it expires (1 hour).
 - Claude uses CIMD only when the authorization server metadata has
   `"client_id_metadata_document_supported": true` and `"none"` in
   `token_endpoint_auth_methods_supported`. Otherwise it tries DCR.
