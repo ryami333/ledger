@@ -1,7 +1,7 @@
 import { auth } from "../server/auth.ts";
 import { authMiddleware } from "../server/authMiddleware.ts";
 import { createServerFn } from "@tanstack/react-start";
-import { getRequestHeaders } from "@tanstack/react-start/server";
+import { getRequest, getRequestHeaders } from "@tanstack/react-start/server";
 import { z } from "zod";
 
 /**
@@ -17,6 +17,11 @@ export const submitOAuthConsentServerFn = createServerFn({ method: "POST" })
     const result = await auth.api.oauth2Consent({
       body: { accept: data.accept, oauth_query: data.oauthQuery },
       headers: getRequestHeaders(),
+      // An accepted consent continues the authorization, and the authorize
+      // step refuses a call with no request ("request not found"). With a
+      // request, better-auth gives a Response, thus asResponse is false.
+      request: getRequest(),
+      asResponse: false,
     });
     return { url: result.url };
   });
