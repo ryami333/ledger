@@ -1405,8 +1405,8 @@ See D20.
       "Spaces" on `/users`, no "New Space" for a guest, and no details and danger zone in
       the settings of a guest.
 - [x] Test against the local stack (see the notes).
-- [ ] Release as `minor`. The upgrade notes tell that each guest keeps only the spaces with
-      a linked member of the guest.
+- [x] Release as `minor` (v0.8.0). The upgrade notes tell that each guest keeps only the
+      spaces with a linked member of the guest.
 
 Notes:
 
