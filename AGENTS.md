@@ -28,8 +28,7 @@ comments, docs, and chat.
   the user is made, and does not change. The sign-in method of a session does not change it.
 - **Admin:** A user with the role `admin`. The first Pocket ID sign-in of a person makes an
   admin. An admin can invite and remove guests, and only an admin can make, rename, or
-  delete a space. An admin
-  can sign in with Pocket ID or with a sign-in code.
+  delete a space. An admin can sign in with Pocket ID or with a sign-in code.
 - **Guest:** A user with the role `guest`. An invitation makes a guest.
 - **Space guest:** One row of `space_guests`. A space that one guest can read and change.
   An admin sets them in the invitation and with "Edit Spaces".
