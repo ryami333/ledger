@@ -16,8 +16,8 @@ import { createFileRoute } from "@tanstack/react-router";
  * The route gives this query to better-auth as `oauth_query`. After the
  * Pocket ID callback, better-auth continues the authorization, not `next`.
  *
- * When the magic link is on, the route first sends a signed query to
- * `/login`, so the user can select the sign-in method (PLAN.md, D18, rule 6).
+ * When email is on, the route first sends a signed query to `/login`, where
+ * the main sign-in is a code in an email (PLAN.md, D18, rule 6).
  * The Pocket ID button of `/login` comes back here with
  * `sign_in_with=pocket-id`.
  */

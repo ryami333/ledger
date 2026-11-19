@@ -23,13 +23,13 @@ export const Route = createFileRoute("/login")({
 
 function LoginRouteComponent() {
   const { next, error, oauth_query: oauthQuery } = Route.useSearch();
-  const { isMagicLinkEnabled } = Route.useLoaderData();
+  const { isSignInCodeEnabled } = Route.useLoaderData();
   return (
     <LoginView
       next={next}
       error={error}
       oauthQuery={oauthQuery}
-      isMagicLinkEnabled={isMagicLinkEnabled}
+      isSignInCodeEnabled={isSignInCodeEnabled}
     />
   );
 }

@@ -6,7 +6,7 @@ const signatureParameterNames = ["sig", "exp", "ba_iat", "ba_pl", "ba_param"];
 
 /**
  * Returns the path of the authorize endpoint for a signed query of the login
- * page (PLAN.md, D18, rule 6). After a magic link, the browser opens this
+ * page (PLAN.md, D18, rule 6). After a sign-in code, the browser opens this
  * path with a session, and the MCP authorization continues.
  *
  * It does what better-auth does after a Pocket ID sign-in: it removes the

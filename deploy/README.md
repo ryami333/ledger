@@ -19,7 +19,7 @@ of `postgres`. `rest` and `db-dump` wait until the web app is healthy. The start
 `db`, `ledger-web`, `rest` (PLAN.md, D12).
 
 No part of Supabase runs. better-auth in the web app does the sign-in with Pocket ID
-(PLAN.md, D3) and with a magic link (PLAN.md, D18). Resend sends the emails.
+(PLAN.md, D3) and with a sign-in code (PLAN.md, D18). Resend sends the emails.
 
 ## Files
 
@@ -95,7 +95,7 @@ Register the callback URL by hand. No script does this step.
 
 ## Email
 
-The web app sends the magic links and the invitations with Resend (PLAN.md, D18). The
+The web app sends the sign-in codes and the invitations with Resend (PLAN.md, D18). The
 sender is `MAIL_FROM` in `compose.yaml`, `ledger <noreply@ledger.mitchryan.org>`.
 
 1. In Resend, verify the domain `ledger.mitchryan.org`. Add the DKIM record, and the MX
@@ -104,7 +104,7 @@ sender is `MAIL_FROM` in `compose.yaml`, `ledger <noreply@ledger.mitchryan.org>`
 3. Make an API key with **Sending access** for the domain `ledger.mitchryan.org` only.
 4. Write the key to `secrets/resend_api_key`, with no other text.
 
-An empty `secrets/resend_api_key` turns off the magic link and the invitations. Then
+An empty `secrets/resend_api_key` turns off the sign-in code and the invitations. Then
 `/login` shows only Pocket ID.
 
 To add the key on a host that exists:
@@ -113,7 +113,7 @@ To add the key on a host that exists:
 2. Write the key to the file.
 3. Run `make upgrade`. Compose mounts the new secret.
 
-Send one magic link to a Gmail address and to one other provider. Make sure that it does
+Send one sign-in code to a Gmail address and to one other provider. Make sure that it does
 not go to spam.
 
 ## Users
@@ -126,7 +126,7 @@ docker compose exec ledger-web node src/scripts/removeUser.ts --email <email>
 ```
 
 Remove the user in ledger also after you remove the user from the Pocket ID user group.
-Otherwise the user can still sign in with a magic link.
+Otherwise the user can still sign in with a sign-in code.
 
 ## Cloudflared
 

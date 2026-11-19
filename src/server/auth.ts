@@ -1,10 +1,9 @@
-import { buildMagicLinkConfirmUrl } from "../core/auth/buildMagicLinkConfirmUrl.ts";
 import { isClaudeClientMetadataUrl } from "../core/auth/isClaudeClientMetadataUrl.ts";
 import { pocketIdProviderId } from "../core/auth/pocketIdProviderId.ts";
-import { resolveRedirectPath } from "../core/auth/resolveRedirectPath.ts";
 import { resolveRoleOnUserCreate } from "../core/auth/resolveRoleOnUserCreate.ts";
 import { snakeCaseModel } from "../core/auth/snakeCaseModel.ts";
-import { renderMagicLinkEmail } from "../core/email/renderMagicLinkEmail.ts";
+import { renderSignInCodeEmail } from "../core/email/renderSignInCodeEmail.ts";
+import { SIGN_IN_CODE_LENGTH } from "../core/forms/signInCodeSchema.ts";
 import { ledgerScopes } from "../core/mcp/ledgerScopes.ts";
 import { env } from "../env.ts";
 import { isEmailEnabled, sendEmail } from "./sendEmail.ts";
@@ -12,7 +11,7 @@ import { cimd } from "@better-auth/cimd";
 import { fetchClientMetadataResource } from "@better-auth/cimd/node";
 import { mcp } from "@better-auth/mcp";
 import { betterAuth } from "better-auth";
-import { genericOAuth, jwt, magicLink } from "better-auth/plugins";
+import { emailOTP, genericOAuth, jwt } from "better-auth/plugins";
 import { tanstackStartCookies } from "better-auth/tanstack-start";
 import pg from "pg";
 import { Temporal } from "temporal-polyfill";
@@ -25,53 +24,42 @@ export const mcpResourceUrl = new URL("/mcp", env.APP_URL).href;
 
 const timestampFields = { createdAt: "created_at", updatedAt: "updated_at" };
 
-/** A magic link expires after this time (PLAN.md, D18, rule 5). */
-export const MAGIC_LINK_EXPIRY = Temporal.Duration.from({ minutes: 15 });
+/** A sign-in code expires after this time (PLAN.md, D18, rule 5). */
+export const SIGN_IN_CODE_EXPIRY = Temporal.Duration.from({ minutes: 10 });
 
 /**
- * The magic link (PLAN.md, D18). It signs in a user that exists, and never
- * makes a user. better-auth calls sendMagicLink for each address. Thus
- * sendMagicLink looks up the user first, and sends nothing to an unknown
- * address. The endpoint gives the same answer in both cases.
+ * The sign-in with a code in an email (PLAN.md, D18). It signs in a user
+ * that exists, and never makes a user. With `disableSignUp`, better-auth
+ * sends nothing to an unknown address, and gives the same answer.
  *
  * The send does not block the answer, so that the duration of the answer
  * also does not tell if the user exists. sendEmail logs each failure.
  */
-const magicLinkPlugin = magicLink({
+const emailOtpPlugin = emailOTP({
   disableSignUp: true,
-  expiresIn: MAGIC_LINK_EXPIRY.total({ unit: "seconds" }),
-  storeToken: "hashed",
+  otpLength: SIGN_IN_CODE_LENGTH,
+  expiresIn: SIGN_IN_CODE_EXPIRY.total({ unit: "seconds" }),
+  storeOTP: "hashed",
+  allowedAttempts: 5,
+  // The limit of the send endpoint. The sign-in endpoint has its own limit
+  // in rateLimit.customRules below.
   rateLimit: {
     window: Temporal.Duration.from({ minutes: 10 }).total({ unit: "seconds" }),
     max: 5,
   },
-  sendMagicLink: async ({ email, url, token }, context) => {
-    const user = await context?.context.internalAdapter
-      .findUserByEmail(email)
-      .then((result) => result?.user ?? null);
-    if (!user) {
-      console.log("sendMagicLink skipped", { userId: "no user" });
+  sendVerificationOTP: async ({ email, otp, type }) => {
+    if (type !== "sign-in") {
+      console.log("sendVerificationOTP skipped", { type });
       return;
     }
-    // The email links to the confirm page, not to the verify URL of
-    // better-auth (D18, rule 4). The page sends callbackURL again.
-    const callbackPath = resolveRedirectPath({
-      next: new URL(url).searchParams.get("callbackURL"),
-      fallback: "/",
-    });
-    const confirmUrl = buildMagicLinkConfirmUrl({
-      appUrl: env.APP_URL,
-      token,
-      callbackPath,
-    });
-    console.log("sendMagicLink sending", { userId: user.id });
+    console.log("sendVerificationOTP sending");
     sendEmail({
-      to: user.email,
-      email: renderMagicLinkEmail({
-        confirmUrl: confirmUrl.href,
-        expiresInMinutes: MAGIC_LINK_EXPIRY.total({ unit: "minutes" }),
+      to: email,
+      email: renderSignInCodeEmail({
+        code: otp,
+        expiresInMinutes: SIGN_IN_CODE_EXPIRY.total({ unit: "minutes" }),
       }),
-      purpose: "magic-link",
+      purpose: "sign-in-code",
     }).catch(() => {
       // sendEmail logs the error code.
     });
@@ -80,7 +68,7 @@ const magicLinkPlugin = magicLink({
 
 /**
  * The sign-in of the web app (PLAN.md, D3 and D18). A user signs in with
- * Pocket ID or with a magic link. The OIDC client of Pocket ID allows only
+ * Pocket ID or with a code in an email. The OIDC client of Pocket ID allows only
  * one Pocket ID user group. There is no email or password sign-in.
  *
  * The role of a user (D19) is set one time, when the user is made: admin
@@ -105,15 +93,15 @@ export const auth = betterAuth({
     // rate limit counts the requests of each IP address.
     ipAddress: { ipAddressHeaders: ["cf-connecting-ip", "x-forwarded-for"] },
   },
-  // On in each environment, so that the limit of the magic link (D18, rule 5)
-  // is also active in local tests. The storage is the memory of the process.
-  // The plugin gives its limit (5 in 10 minutes) also to the verify endpoint.
-  // A token has 32 random characters, thus a guess is not possible. Thus the
-  // verify endpoint gets a looser limit, for users behind one IP address.
+  // On in each environment, so that the limits of the sign-in code (D18,
+  // rule 5) are also active in local tests. The storage is the memory of the
+  // process. The plugin gives its limit (5 in 10 minutes) to each of its
+  // endpoints. The sign-in endpoint gets a looser limit, for users behind one
+  // IP address. Each code also allows only 5 wrong attempts.
   rateLimit: {
     enabled: true,
     customRules: {
-      "/magic-link/verify": {
+      "/sign-in/email-otp": {
         window: Temporal.Duration.from({ minutes: 1 }).total({
           unit: "seconds",
         }),
@@ -197,7 +185,8 @@ export const auth = betterAuth({
     // The OAuth 2.1 authorization server for the MCP clients (PLAN.md, D15).
     // jwt() signs the access tokens. The login page /auth/sign-in sends the
     // user to Pocket ID, and better-auth then continues the authorization.
-    // With a magic link, the link opens the authorize endpoint (D18, rule 6).
+    // After a sign-in with a code, /login opens the authorize endpoint (D18,
+    // rule 6).
     jwt({
       schema: {
         jwks: snakeCaseModel({
@@ -326,7 +315,7 @@ export const auth = betterAuth({
       isMetadataDocumentUrlAllowed: isClaudeClientMetadataUrl,
     }),
     // Only with an API key of Resend (D18, rule 7).
-    ...(isEmailEnabled ? [magicLinkPlugin] : []),
+    ...(isEmailEnabled ? [emailOtpPlugin] : []),
     // Must be the last plugin.
     tanstackStartCookies(),
   ],

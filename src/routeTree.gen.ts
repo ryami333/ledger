@@ -13,8 +13,8 @@ import { Route as AppRouteImport } from './routes/_app'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as McpRouteImport } from './routes/mcp'
 import { Route as AppIndexRouteImport } from './routes/_app.index'
+import { Route as AppAccountRouteImport } from './routes/_app.account'
 import { Route as AppUsersRouteImport } from './routes/_app.users'
-import { Route as AuthMagicLinkRouteImport } from './routes/auth.magic-link'
 import { Route as AuthSignInRouteImport } from './routes/auth.sign-in'
 import { Route as OauthConsentRouteImport } from './routes/oauth.consent'
 import { Route as DotwellKnownOauthProtectedResourceMcpRouteImport } from './routes/[.]well-known.oauth-protected-resource.mcp'
@@ -43,15 +43,15 @@ const AppIndexRoute = AppIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AppRoute,
 } as any)
+const AppAccountRoute = AppAccountRouteImport.update({
+  id: '/account',
+  path: '/account',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppUsersRoute = AppUsersRouteImport.update({
   id: '/users',
   path: '/users',
   getParentRoute: () => AppRoute,
-} as any)
-const AuthMagicLinkRoute = AuthMagicLinkRouteImport.update({
-  id: '/auth/magic-link',
-  path: '/auth/magic-link',
-  getParentRoute: () => rootRouteImport,
 } as any)
 const AuthSignInRoute = AuthSignInRouteImport.update({
   id: '/auth/sign-in',
@@ -102,8 +102,8 @@ export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
   '/login': typeof LoginRoute
   '/mcp': typeof McpRoute
+  '/account': typeof AppAccountRoute
   '/users': typeof AppUsersRoute
-  '/auth/magic-link': typeof AuthMagicLinkRoute
   '/auth/sign-in': typeof AuthSignInRoute
   '/oauth/consent': typeof OauthConsentRoute
   '/.well-known/oauth-protected-resource/mcp': typeof DotwellKnownOauthProtectedResourceMcpRoute
@@ -116,8 +116,8 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/mcp': typeof McpRoute
+  '/account': typeof AppAccountRoute
   '/users': typeof AppUsersRoute
-  '/auth/magic-link': typeof AuthMagicLinkRoute
   '/auth/sign-in': typeof AuthSignInRoute
   '/oauth/consent': typeof OauthConsentRoute
   '/': typeof AppIndexRoute
@@ -133,8 +133,8 @@ export interface FileRoutesById {
   '/_app': typeof AppRouteWithChildren
   '/login': typeof LoginRoute
   '/mcp': typeof McpRoute
+  '/_app/account': typeof AppAccountRoute
   '/_app/users': typeof AppUsersRoute
-  '/auth/magic-link': typeof AuthMagicLinkRoute
   '/auth/sign-in': typeof AuthSignInRoute
   '/oauth/consent': typeof OauthConsentRoute
   '/_app/': typeof AppIndexRoute
@@ -151,8 +151,8 @@ export interface FileRouteTypes {
     | '/'
     | '/login'
     | '/mcp'
+    | '/account'
     | '/users'
-    | '/auth/magic-link'
     | '/auth/sign-in'
     | '/oauth/consent'
     | '/.well-known/oauth-protected-resource/mcp'
@@ -165,8 +165,8 @@ export interface FileRouteTypes {
   to:
     | '/login'
     | '/mcp'
+    | '/account'
     | '/users'
-    | '/auth/magic-link'
     | '/auth/sign-in'
     | '/oauth/consent'
     | '/'
@@ -181,8 +181,8 @@ export interface FileRouteTypes {
     | '/_app'
     | '/login'
     | '/mcp'
+    | '/_app/account'
     | '/_app/users'
-    | '/auth/magic-link'
     | '/auth/sign-in'
     | '/oauth/consent'
     | '/_app/'
@@ -198,7 +198,6 @@ export interface RootRouteChildren {
   AppRoute: typeof AppRouteWithChildren
   LoginRoute: typeof LoginRoute
   McpRoute: typeof McpRoute
-  AuthMagicLinkRoute: typeof AuthMagicLinkRoute
   AuthSignInRoute: typeof AuthSignInRoute
   OauthConsentRoute: typeof OauthConsentRoute
   DotwellKnownOauthProtectedResourceMcpRoute: typeof DotwellKnownOauthProtectedResourceMcpRoute
@@ -237,19 +236,19 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppIndexRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/account': {
+      id: '/_app/account'
+      path: '/account'
+      fullPath: '/account'
+      preLoaderRoute: typeof AppAccountRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/users': {
       id: '/_app/users'
       path: '/users'
       fullPath: '/users'
       preLoaderRoute: typeof AppUsersRouteImport
       parentRoute: typeof AppRoute
-    }
-    '/auth/magic-link': {
-      id: '/auth/magic-link'
-      path: '/auth/magic-link'
-      fullPath: '/auth/magic-link'
-      preLoaderRoute: typeof AuthMagicLinkRouteImport
-      parentRoute: typeof rootRouteImport
     }
     '/auth/sign-in': {
       id: '/auth/sign-in'
@@ -311,6 +310,7 @@ declare module '@tanstack/react-router' {
 }
 
 interface AppRouteChildren {
+  AppAccountRoute: typeof AppAccountRoute
   AppUsersRoute: typeof AppUsersRoute
   AppIndexRoute: typeof AppIndexRoute
   AppSpacesSpaceSlugSettingsRoute: typeof AppSpacesSpaceSlugSettingsRoute
@@ -318,6 +318,7 @@ interface AppRouteChildren {
 }
 
 const AppRouteChildren: AppRouteChildren = {
+  AppAccountRoute: AppAccountRoute,
   AppUsersRoute: AppUsersRoute,
   AppIndexRoute: AppIndexRoute,
   AppSpacesSpaceSlugSettingsRoute: AppSpacesSpaceSlugSettingsRoute,
@@ -330,7 +331,6 @@ const rootRouteChildren: RootRouteChildren = {
   AppRoute: AppRouteWithChildren,
   LoginRoute: LoginRoute,
   McpRoute: McpRoute,
-  AuthMagicLinkRoute: AuthMagicLinkRoute,
   AuthSignInRoute: AuthSignInRoute,
   OauthConsentRoute: OauthConsentRoute,
   DotwellKnownOauthProtectedResourceMcpRoute:

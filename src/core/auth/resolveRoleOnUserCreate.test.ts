@@ -28,7 +28,7 @@ describe("resolveRoleOnUserCreate", () => {
 
   it("gives guest for a different endpoint", () => {
     for (const endpointPath of [
-      "/magic-link/verify",
+      "/sign-in/email-otp",
       "/sign-in/social",
       "/callback/pocket-id/extra",
     ]) {

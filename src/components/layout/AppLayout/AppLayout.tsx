@@ -9,8 +9,8 @@ const cx = classNames.bind(styles);
 
 /**
  * The shell of each signed-in page: a header with the product name and a
- * menu with the name of the user and "Sign Out". For an admin, the menu also
- * has "Users" (PLAN.md, D19, rule 3).
+ * menu with the name of the user, "Account Settings", and "Sign Out". For an
+ * admin, the menu also has "Users" (PLAN.md, D19, rule 3).
  */
 export function AppLayout({
   userName,
@@ -49,6 +49,11 @@ export function AppLayout({
                   {userEmail}
                 </Text>
               </Menu.Label>
+              <Menu.Item
+                renderRoot={(props) => <Link {...props} to="/account" />}
+              >
+                Account Settings
+              </Menu.Item>
               {isAdmin ? (
                 <Menu.Item
                   renderRoot={(props) => <Link {...props} to="/users" />}

@@ -8,7 +8,7 @@
  * with no created_by. The page /users removes only guests.
  *
  * Run it after you remove a user from the Pocket ID user group. Otherwise the
- * user can still sign in with a magic link.
+ * user can still sign in with a sign-in code.
  */
 import { env } from "../env.ts";
 import { parseArgs } from "node:util";

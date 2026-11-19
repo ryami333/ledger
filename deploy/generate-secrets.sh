@@ -12,7 +12,7 @@
 # change the roles of an existing database.
 #
 # Fill pocket_id_client_id, pocket_id_client_secret, and resend_api_key by
-# hand. An empty resend_api_key turns off the magic link and the invitations.
+# hand. An empty resend_api_key turns off the sign-in code and the invitations.
 set -eu
 
 cd "$(dirname "$0")"

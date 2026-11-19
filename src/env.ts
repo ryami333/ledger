@@ -46,8 +46,8 @@ export const env = createEnv({
     POCKET_ID_CLIENT_ID: z.string().min(1),
     POCKET_ID_CLIENT_SECRET: z.string().min(1),
     /**
-     * The API key of Resend, for the magic link and the invitation emails
-     * (PLAN.md, D18). With no key, the magic link and the invitation are off.
+     * The API key of Resend, for the sign-in codes and the invitation emails
+     * (PLAN.md, D18). With no key, the sign-in code and the invitation are off.
      */
     RESEND_API_KEY: z.string().startsWith("re_").optional(),
     /** The sender of each email. Resend must know its domain. */

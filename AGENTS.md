@@ -21,16 +21,17 @@ These terms have a specific meaning in this project. Use them with this meaning 
 comments, docs, and chat.
 
 - **User:** One row of `better_auth.users`. A person who can sign in with Pocket ID or with
-  a magic link. A user is not a member, but a user can have a linked member in each space.
+  a sign-in code. A user is not a member, but a user can have a linked member in each space.
   Each user can read and change all spaces.
 - **Role:** `admin` or `guest`, in the column `better_auth.users.role`. The role is set when
   the user is made, and does not change. The sign-in method of a session does not change it.
 - **Admin:** A user with the role `admin`. The first Pocket ID sign-in of a person makes an
   admin. An admin can invite and remove guests. An admin can sign in with Pocket ID or with a
-  magic link.
+  sign-in code.
 - **Guest:** A user with the role `guest`. An invitation makes a guest.
 - **Invitation:** The action of an admin that adds a guest and sends an email to the guest.
-- **Magic link:** A link in an email that signs in one user one time.
+- **Sign-in code:** A code of 6 digits in an email. It signs in one user one time, in the
+  browser that types it.
 - **Space:** One row of `spaces`. A group of members with a shared ledger, for example one
   trip or one household.
 - **Member:** One row of `members`. A name in one space, for example "Barack". A member has
@@ -111,10 +112,10 @@ style also for commit messages, pull-request descriptions, and reviews. Obey the
   client signs a short HS256 JWT for each request: `role: authenticated`,
   `sub: <user ID>`. Do not add `@supabase/supabase-js`.
 - **Sign-in:** better-auth in the web app, with two methods: the self-hosted Pocket ID
-  (generic OIDC, provider ID `pocket-id`) and a magic link (plugin `magicLink`). The tables
+  (generic OIDC, provider ID `pocket-id`) and a sign-in code (plugin `emailOTP`). The tables
   are in the schema `better_auth`. There is no email or password sign-in. See `PLAN.md`
   (D3, D18, and D19).
-- **Email:** the Resend SDK (`resend`) in `src/server/sendEmail.ts`, for the magic links
+- **Email:** the Resend SDK (`resend`) in `src/server/sendEmail.ts`, for the sign-in codes
   and the invitations. With no `RESEND_API_KEY`, both are off. See `PLAN.md` (D18).
 - **Migrations:** pg-delta writes them from the schema files.
 - **Tests:** Vitest for TypeScript, pgTAP for the database.

@@ -85,7 +85,7 @@ services:
       POCKET_ID_ISSUER: https://auth.mitchryan.org
       POCKET_ID_CLIENT_ID_FILE: /run/secrets/pocket_id_client_id
       POCKET_ID_CLIENT_SECRET_FILE: /run/secrets/pocket_id_client_secret
-      # Email for the magic link and the invitations (PLAN.md, D18). An empty
+      # Email for the sign-in code and the invitations (PLAN.md, D18). An empty
       # file turns both off.
       RESEND_API_KEY_FILE: /run/secrets/resend_api_key
       MAIL_FROM: ledger <noreply@ledger.mitchryan.org>

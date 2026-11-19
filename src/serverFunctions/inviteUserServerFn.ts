@@ -10,7 +10,7 @@ import { setResponseStatus } from "@tanstack/react-start/server";
 /**
  * Invites a guest (PLAN.md, D19, rule 4): it makes the user, then sends the
  * invitation email. The email has no token. It links to `/login`, where the
- * guest asks for a magic link.
+ * guest asks for a sign-in code.
  *
  * The database hook of auth.ts gives the new user the role guest, because no
  * Pocket ID callback makes it. If the send fails, the server function deletes

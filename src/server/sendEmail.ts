@@ -5,7 +5,7 @@ import { Resend } from "resend";
 /** The Resend client, or null when RESEND_API_KEY is not set (PLAN.md, D18). */
 const resend = env.RESEND_API_KEY ? new Resend(env.RESEND_API_KEY) : null;
 
-/** Tells if the app can send email. The magic link and the invitation need it. */
+/** Tells if the app can send email. The sign-in code and the invitation need it. */
 export const isEmailEnabled = resend !== null;
 
 /**
@@ -22,7 +22,7 @@ export const sendEmail = async ({
 }: {
   to: string;
   email: RenderedEmail;
-  /** A short name for the log, for example "magic-link". */
+  /** A short name for the log, for example "sign-in-code". */
   purpose: string;
 }): Promise<{ id: string }> => {
   if (!resend) {

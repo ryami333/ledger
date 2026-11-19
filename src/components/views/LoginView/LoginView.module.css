@@ -1,11 +1,16 @@
 .page {
   display: grid;
-  place-items: center;
+  place-content: center;
+  justify-items: center;
+  gap: var(--mantine-spacing-md);
   padding: var(--mantine-spacing-md);
   min-height: 100dvh;
 }
 
 .panel {
-  width: 100%;
-  max-width: 380px;
+  width: min(100vw - 2 * var(--mantine-spacing-md), 380px);
+}
+
+.adminLink {
+  text-align: center;
 }
