@@ -25,7 +25,8 @@ select is_empty(
        and p.proname not in (
          'current_user_id', 'create_space', 'save_space_currencies',
          'save_alias', 'save_transaction', 'import_transactions',
-         'set_linked_member', 'set_default_space'
+         'set_linked_member', 'set_default_space', 'current_user_is_admin',
+         'can_access_space', 'set_space_guests'
        ) $$,
   'authenticated has EXECUTE only on the listed functions in public'
 );
@@ -36,8 +37,11 @@ select ok(
   and has_function_privilege('authenticated', 'public.save_alias(uuid, uuid, text, uuid[])', 'execute')
   and has_function_privilege('authenticated', 'public.save_transaction(uuid, uuid, text, text, bigint, text, text, date, jsonb, jsonb)', 'execute')
   and has_function_privilege('authenticated', 'public.import_transactions(uuid, jsonb, jsonb)', 'execute')
-  and has_function_privilege('authenticated', 'public.current_user_id()', 'execute'),
-  'authenticated has EXECUTE on the functions of PLAN.md, D9, and on current_user_id'
+  and has_function_privilege('authenticated', 'public.set_space_guests(uuid, uuid[])', 'execute')
+  and has_function_privilege('authenticated', 'public.current_user_id()', 'execute')
+  and has_function_privilege('authenticated', 'public.current_user_is_admin()', 'execute')
+  and has_function_privilege('authenticated', 'public.can_access_space(uuid)', 'execute'),
+  'authenticated has EXECUTE on the functions of PLAN.md, D9 and D20, and on current_user_id'
 );
 
 select * from finish();

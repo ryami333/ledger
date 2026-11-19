@@ -234,6 +234,41 @@ export type Database = {
           },
         ];
       };
+      space_guests: {
+        Row: {
+          created_at: string;
+          space_id: string;
+          updated_at: string;
+          user_id: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          created_at?: string;
+          space_id: string;
+          updated_at?: string;
+          user_id: string;
+        };
+        Update: {
+          created_at?: string;
+          space_id?: string;
+          updated_at?: string;
+          user_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "space_guests_space_id_fkey";
+            columns: ["space_id"];
+            referencedRelation: "spaces";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "space_guests_user_id_fkey";
+            columns: ["user_id"];
+            referencedRelation: "app_users";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       spaces: {
         Row: {
           created_at: string;
@@ -437,6 +472,7 @@ export type Database = {
       };
     };
     Functions: {
+      can_access_space: { Args: { p_space_id: string }; Returns: boolean };
       create_space: {
         Args: {
           p_default_currency: string;
@@ -448,6 +484,10 @@ export type Database = {
         Returns: string;
       };
       current_user_id: { Args: Record<PropertyKey, never>; Returns: string };
+      current_user_is_admin: {
+        Args: Record<PropertyKey, never>;
+        Returns: boolean;
+      };
       import_transactions: {
         Args: { p_currencies: Json; p_space_id: string; p_transactions: Json };
         Returns: number;
@@ -483,6 +523,10 @@ export type Database = {
       set_default_space: { Args: { p_space_id: string }; Returns: string };
       set_linked_member: {
         Args: { p_member_id: string; p_space_id: string };
+        Returns: string;
+      };
+      set_space_guests: {
+        Args: { p_space_ids: string[]; p_user_id: string };
         Returns: string;
       };
     };

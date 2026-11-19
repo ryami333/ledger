@@ -6,7 +6,7 @@
 --     links to this user (PLAN.md, D3).
 --   - one guest, delivered@resend.dev, as after an invitation (PLAN.md, D19).
 --     Resend accepts this address for tests, thus a sign-in code to it sends
---     no real email.
+--     no real email. The guest has the space "Washington" (D20).
 --   - the space "Washington" with Barack, Michelle, Donald, and Melania, the
 --     alias "Obamas' Shared Account" (Barack and Michelle), the currencies
 --     EUR (default) and USD, and some transactions in both currencies.
@@ -31,6 +31,9 @@ values (
   'a0000000-0000-4000-8000-000000000001',
   'a0000000-0000-4000-8000-000000000001'
 );
+
+insert into public.space_guests (space_id, user_id)
+values ('b0000000-0000-4000-8000-000000000001', 'a0000000-0000-4000-8000-000000000002');
 
 insert into public.space_currencies (space_id, currency, rate, is_default)
 values

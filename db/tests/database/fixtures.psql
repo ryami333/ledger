@@ -4,8 +4,9 @@
 --
 -- The test files use these IDs as literals:
 --
---   00000000-0000-0000-0000-00000000000a   user A
---   00000000-0000-0000-0000-00000000000b   user B
+--   00000000-0000-0000-0000-00000000000a   user A, an admin
+--   00000000-0000-0000-0000-00000000000b   user B, an admin
+--   00000000-0000-0000-0000-00000000000c   user C, a guest with space A only
 --   10000000-0000-0000-0000-00000000000a   space A (EUR default, USD 0.92)
 --   10000000-0000-0000-0000-00000000000b   space B (EUR default)
 --   20000000-0000-0000-0000-0000000000a1   member Barack of space A
@@ -25,6 +26,11 @@ do $$
 begin
   perform tests.create_user('00000000-0000-0000-0000-00000000000a', 'user-a@test.invalid');
   perform tests.create_user('00000000-0000-0000-0000-00000000000b', 'user-b@test.invalid');
+  perform tests.create_user('00000000-0000-0000-0000-00000000000c', 'user-c@test.invalid');
+
+  update better_auth.users
+  set role = 'admin'
+  where id in ('00000000-0000-0000-0000-00000000000a', '00000000-0000-0000-0000-00000000000b');
 
   insert into public.spaces (id, title, created_by, updated_by)
   values
@@ -70,5 +76,8 @@ begin
      '20000000-0000-0000-0000-0000000000a1', null),
     ('40000000-0000-0000-0000-00000000000a', '10000000-0000-0000-0000-00000000000a', 'paid_for',
      '20000000-0000-0000-0000-0000000000a2', null);
+
+  insert into public.space_guests (space_id, user_id)
+  values ('10000000-0000-0000-0000-00000000000a', '00000000-0000-0000-0000-00000000000c');
 end;
 $$;

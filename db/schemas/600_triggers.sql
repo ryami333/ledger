@@ -22,6 +22,9 @@ CREATE OR REPLACE TRIGGER "linked_members_set_updated_at" BEFORE INSERT OR UPDAT
 CREATE OR REPLACE TRIGGER "default_spaces_set_created_at" BEFORE INSERT OR UPDATE ON "public"."default_spaces" FOR EACH ROW EXECUTE FUNCTION "public"."set_created_at"();
 CREATE OR REPLACE TRIGGER "default_spaces_set_updated_at" BEFORE INSERT OR UPDATE ON "public"."default_spaces" FOR EACH ROW EXECUTE FUNCTION "public"."set_updated_at"();
 
+CREATE OR REPLACE TRIGGER "space_guests_set_created_at" BEFORE INSERT OR UPDATE ON "public"."space_guests" FOR EACH ROW EXECUTE FUNCTION "public"."set_created_at"();
+CREATE OR REPLACE TRIGGER "space_guests_set_updated_at" BEFORE INSERT OR UPDATE ON "public"."space_guests" FOR EACH ROW EXECUTE FUNCTION "public"."set_updated_at"();
+
 CREATE OR REPLACE TRIGGER "transactions_set_created_at" BEFORE INSERT OR UPDATE ON "public"."transactions" FOR EACH ROW EXECUTE FUNCTION "public"."set_created_at"();
 CREATE OR REPLACE TRIGGER "transactions_set_updated_at" BEFORE INSERT OR UPDATE ON "public"."transactions" FOR EACH ROW EXECUTE FUNCTION "public"."set_updated_at"();
 

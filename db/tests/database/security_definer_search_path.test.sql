@@ -1,7 +1,9 @@
--- Checks that the public schema has no SECURITY DEFINER function, and that
--- each function sets search_path to an empty string (PLAN.md, D3 and D9).
+-- Checks that current_user_is_admin is the only SECURITY DEFINER function in
+-- the public schema, and that each function sets search_path to an empty
+-- string (PLAN.md, D3, D9, and D20).
 --
--- The view app_users is the only object that runs as its owner. A function
+-- current_user_is_admin reads better_auth.users as its owner (D20). The view
+-- app_users also runs as its owner. A function
 -- with no search_path of its own uses the search_path of the caller. A caller
 -- can then make the function read an object of the caller.
 
@@ -27,8 +29,9 @@ select is_empty(
     join pg_namespace n on n.oid = p.pronamespace
     where n.nspname = 'public'
       and p.prosecdef
+      and p.oid <> 'public.current_user_is_admin()'::regprocedure
   $$,
-  'The public schema has no SECURITY DEFINER function'
+  'The public schema has no SECURITY DEFINER function other than current_user_is_admin'
 );
 
 select is_empty(

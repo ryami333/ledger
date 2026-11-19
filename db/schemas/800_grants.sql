@@ -57,6 +57,10 @@ grant delete on "public"."linked_members" to authenticated;
 grant insert ("space_id") on "public"."default_spaces" to authenticated;
 grant delete on "public"."default_spaces" to authenticated;
 
+-- Only an admin writes these rows (700_policies.sql).
+grant insert ("space_id", "user_id") on "public"."space_guests" to authenticated;
+grant delete on "public"."space_guests" to authenticated;
+
 -- better-auth owns the schema better_auth. No PostgREST role reads it. The
 -- view app_users reads it as its owner.
 revoke all on schema "better_auth" from public, anon, authenticated;
@@ -71,9 +75,14 @@ revoke execute on function "public"."check_space_default_currency"() from public
 revoke execute on function "public"."check_alias_members"() from public, anon, authenticated;
 revoke execute on function "public"."check_transaction_sides"() from public, anon, authenticated;
 
--- The actor triggers call current_user_id as the role of the request.
+-- The actor triggers call current_user_id as the role of the request. The
+-- RLS policies call current_user_is_admin and can_access_space (D20).
 revoke execute on function "public"."current_user_id"() from public, anon;
 grant execute on function "public"."current_user_id"() to authenticated;
+revoke execute on function "public"."current_user_is_admin"() from public, anon;
+grant execute on function "public"."current_user_is_admin"() to authenticated;
+revoke execute on function "public"."can_access_space"("uuid") from public, anon;
+grant execute on function "public"."can_access_space"("uuid") to authenticated;
 
 -- The web app calls the functions of PLAN.md, D9 with the user client.
 revoke execute on function "public"."create_space"("text", "text", "text", "text"[], "text") from public, anon;
@@ -90,3 +99,5 @@ revoke execute on function "public"."set_linked_member"("uuid", "uuid") from pub
 grant execute on function "public"."set_linked_member"("uuid", "uuid") to authenticated;
 revoke execute on function "public"."set_default_space"("uuid") from public, anon;
 grant execute on function "public"."set_default_space"("uuid") to authenticated;
+revoke execute on function "public"."set_space_guests"("uuid", "uuid"[]) from public, anon;
+grant execute on function "public"."set_space_guests"("uuid", "uuid"[]) to authenticated;

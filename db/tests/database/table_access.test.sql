@@ -60,15 +60,15 @@ select throws_ok(
   'select.spaces: anon is refused'
 );
 
--- authenticated: user B reads and writes the rows of space A. Each user can
--- read and change all spaces.
+-- authenticated: admin B reads and writes the rows of space A. An admin can
+-- read and change all spaces. space_guests.test.sql checks a guest.
 
 select tests.authenticate_as('00000000-0000-0000-0000-00000000000b');
 
 select set_eq(
   'select id from public.spaces',
   array['10000000-0000-0000-0000-00000000000a', '10000000-0000-0000-0000-00000000000b']::uuid[],
-  'select.spaces: a user reads all spaces'
+  'select.spaces: an admin reads all spaces'
 );
 
 select isnt_empty(
@@ -94,7 +94,8 @@ select isnt_empty(
 select set_eq(
   'select id, name from public.app_users',
   $$ values ('00000000-0000-0000-0000-00000000000a'::uuid, 'user-a@test.invalid'),
-            ('00000000-0000-0000-0000-00000000000b'::uuid, 'user-b@test.invalid') $$,
+            ('00000000-0000-0000-0000-00000000000b'::uuid, 'user-b@test.invalid'),
+            ('00000000-0000-0000-0000-00000000000c'::uuid, 'user-c@test.invalid') $$,
   'select.app_users: a user reads the names of all users'
 );
 

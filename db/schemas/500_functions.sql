@@ -11,6 +11,41 @@ CREATE OR REPLACE FUNCTION "public"."current_user_id"() RETURNS "uuid"
   )::uuid;
 $$;
 
+-- Returns true when the current user is an admin (PLAN.md, D19 and D20).
+--
+-- It is the only SECURITY DEFINER function in public. The role
+-- authenticated cannot read better_auth.users, thus the function reads the
+-- role as its owner. It returns only the role of the current user.
+CREATE OR REPLACE FUNCTION "public"."current_user_is_admin"() RETURNS boolean
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+  select coalesce(
+    (
+      select users.role = 'admin'
+      from better_auth.users
+      where users.id = public.current_user_id()
+    ),
+    false
+  );
+$$;
+
+-- Returns true when the current user can read and change a space (PLAN.md,
+-- D20): each admin, and a guest with a row in space_guests. The RLS policies
+-- of the tables of a space call it.
+CREATE OR REPLACE FUNCTION "public"."can_access_space"("p_space_id" "uuid") RETURNS boolean
+    LANGUAGE "sql" STABLE SECURITY INVOKER
+    SET "search_path" TO ''
+    AS $$
+  select public.current_user_is_admin()
+    or exists (
+      select 1
+      from public.space_guests
+      where space_guests.space_id = p_space_id
+        and space_guests.user_id = public.current_user_id()
+    );
+$$;
+
 -- Gives a new space its ID as slug when the insert sends no slug. The user
 -- can change the slug later.
 CREATE OR REPLACE FUNCTION "public"."set_space_slug"() RETURNS "trigger"
@@ -643,5 +678,30 @@ begin
   end if;
 
   return public.current_user_id();
+end;
+$$;
+
+-- Replaces the spaces of a guest (PLAN.md, D20). Returns the ID of the user.
+-- RLS lets only an admin insert and delete the rows of space_guests.
+CREATE OR REPLACE FUNCTION "public"."set_space_guests"("p_user_id" "uuid", "p_space_ids" "uuid"[]) RETURNS "uuid"
+    LANGUAGE "plpgsql" SECURITY INVOKER
+    SET "search_path" TO ''
+    AS $$
+begin
+  if not public.current_user_is_admin() then
+    raise exception 'Only an admin can change the spaces of a guest.'
+      using errcode = '42501';
+  end if;
+
+  delete from public.space_guests
+  where space_guests.user_id = p_user_id
+    and space_guests.space_id <> all (p_space_ids);
+
+  insert into public.space_guests (space_id, user_id)
+  select space_id, p_user_id
+  from pg_catalog.unnest(p_space_ids) as space_ids (space_id)
+  on conflict do nothing;
+
+  return p_user_id;
 end;
 $$;
