@@ -2,11 +2,15 @@ import { spaceFormSchema } from "../core/forms/spaceFormSchema.ts";
 import { authMiddleware } from "../server/authMiddleware.ts";
 import { throwDatabaseError } from "../server/throwDatabaseError.ts";
 import { createServerFn } from "@tanstack/react-start";
+import { setResponseStatus } from "@tanstack/react-start/server";
 
 /**
  * Makes a space with its default currency and its first members, in one
  * database transaction (PLAN.md, D9). Returns the slug of the space, for
  * the route of the space page.
+ *
+ * Only an admin makes a space (PLAN.md, D20). RLS refuses a guest. The check
+ * here only gives the guest a clear text.
  *
  * It reads the slug first, so that the user gets a clear text when a
  * different space uses it. The unique constraint still refuses a slug that a
@@ -16,6 +20,10 @@ export const createSpaceServerFn = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .validator(spaceFormSchema)
   .handler(async ({ data, context }) => {
+    if (context.user.role !== "admin") {
+      setResponseStatus(403);
+      throw new Error("Only an admin can make a space.");
+    }
     const { data: spacesWithSlug, error: slugError } = await context.db
       .from("spaces")
       .select("id")

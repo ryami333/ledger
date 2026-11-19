@@ -1,0 +1,5 @@
+/* The form holds the header, the inner area, and the footer of the modal.
+   It must not change the flex layout of the modal frame. */
+.form {
+  display: contents;
+}

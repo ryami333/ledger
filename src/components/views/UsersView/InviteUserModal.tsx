@@ -1,9 +1,11 @@
 import { inviteUserSchema } from "../../../core/forms/inviteUserSchema.ts";
 import { inviteUserServerFn } from "../../../serverFunctions/inviteUserServerFn.ts";
 import { Modal } from "../../ui/Modal.tsx";
+import { GuestSpacesInput } from "./GuestSpacesInput.tsx";
+import type { SpaceOption } from "./UsersView.types.ts";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Alert, Button, Stack, TextInput } from "@mantine/core";
-import { useForm } from "react-hook-form";
+import { Controller, useForm } from "react-hook-form";
 import { type z } from "zod";
 import classNames from "classnames/bind";
 import styles from "./InviteUserModal.module.css";
@@ -13,20 +15,27 @@ const cx = classNames.bind(styles);
 type InviteUserFormInput = z.input<typeof inviteUserSchema>;
 type InviteUserFormOutput = z.output<typeof inviteUserSchema>;
 
-const defaultValues: InviteUserFormInput = { name: "", email: "" };
+const defaultValues: InviteUserFormInput = {
+  name: "",
+  email: "",
+  space_ids: [],
+};
 
 /**
- * The invitation of a guest (PLAN.md, D19, rule 4): a name and an email.
- * ledger makes the guest and sends the invitation email. The modal closes
- * only after a successful send.
+ * The invitation of a guest (PLAN.md, D19, rule 4): a name, an email, and
+ * the spaces of the guest (D20). ledger makes the guest and sends the
+ * invitation email. The modal closes only after a successful send.
  */
 export function InviteUserModal({
   isOpen,
   onRequestClose,
+  spaces,
   onInvite,
 }: {
   isOpen: boolean;
   onRequestClose: () => void;
+  /** All spaces, the options of the spaces input. */
+  spaces: SpaceOption[];
   /** Runs after a successful invitation, for example to load the list again. */
   onInvite: () => Promise<void>;
 }) {
@@ -59,8 +68,8 @@ export function InviteUserModal({
         <Modal.Header closeLabel="Close">
           <Modal.Title>Invite a user</Modal.Title>
           <Modal.Description>
-            The user gets an email with a link to the sign-in page, and signs in
-            with a link in an email. The user is a guest.
+            The user is a guest. The guest gets an email with a link to the
+            sign-in page, and signs in with a code in an email.
           </Modal.Description>
         </Modal.Header>
         <Modal.Inner>
@@ -81,6 +90,19 @@ export function InviteUserModal({
               required
               error={errors.email?.message}
               {...form.register("email")}
+            />
+            <Controller
+              control={form.control}
+              name="space_ids"
+              render={({ field }) => (
+                <GuestSpacesInput
+                  spaces={spaces}
+                  value={field.value}
+                  onChange={field.onChange}
+                  onBlur={field.onBlur}
+                  error={errors.space_ids?.message}
+                />
+              )}
             />
           </Stack>
         </Modal.Inner>

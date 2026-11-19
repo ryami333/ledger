@@ -7,22 +7,32 @@ describe("inviteUserSchema", () => {
       inviteUserSchema.parse({
         name: " Kamala ",
         email: " Kamala@Example.com ",
+        space_ids: [],
       }),
-    ).toEqual({ name: "Kamala", email: "kamala@example.com" });
+    ).toEqual({ name: "Kamala", email: "kamala@example.com", space_ids: [] });
   });
 
   it("refuses an empty name, a long name, and an invalid email", () => {
     expect(
-      inviteUserSchema.safeParse({ name: " ", email: "a@example.com" }).success,
+      inviteUserSchema.safeParse({
+        name: " ",
+        email: "a@example.com",
+        space_ids: [],
+      }).success,
     ).toBe(false);
     expect(
       inviteUserSchema.safeParse({
         name: "a".repeat(101),
         email: "a@example.com",
+        space_ids: [],
       }).success,
     ).toBe(false);
     expect(
-      inviteUserSchema.safeParse({ name: "Kamala", email: "kamala" }).success,
+      inviteUserSchema.safeParse({
+        name: "Kamala",
+        email: "kamala",
+        space_ids: [],
+      }).success,
     ).toBe(false);
   });
 
@@ -30,6 +40,7 @@ describe("inviteUserSchema", () => {
     const output = inviteUserSchema.parse({
       name: " Kamala ",
       email: "KAMALA@example.com",
+      space_ids: ["b0000000-0000-4000-8000-000000000001"],
     });
     expect(inviteUserSchema.parse(output)).toEqual(output);
   });

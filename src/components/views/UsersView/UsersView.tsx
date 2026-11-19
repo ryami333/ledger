@@ -1,8 +1,9 @@
 import { removeUserServerFn } from "../../../serverFunctions/removeUserServerFn.ts";
 import { useEntityModalState } from "../../../lib/useEntityModalState.ts";
 import { ConfirmModal } from "../../ui/ConfirmModal.tsx";
+import { EditGuestSpacesModal } from "./EditGuestSpacesModal.tsx";
 import { InviteUserModal } from "./InviteUserModal.tsx";
-import type { UserRow } from "./UsersView.types.ts";
+import type { SpaceOption, UserRow } from "./UsersView.types.ts";
 import {
   Badge,
   Button,
@@ -19,8 +20,8 @@ import { Temporal } from "temporal-polyfill";
 
 /**
  * The page `/users` (PLAN.md, D19, rule 3). An admin sees all users with
- * their role, invites a guest, and removes a guest. A guest gets the state
- * `"not-found"`.
+ * their role and spaces, invites a guest, changes the spaces of a guest
+ * (D20), and removes a guest. A guest gets the state `"not-found"`.
  */
 export function UsersView(
   props:
@@ -30,6 +31,7 @@ export function UsersView(
         locale: string;
         currentUserId: string;
         users: UserRow[];
+        spaces: SpaceOption[];
       },
 ) {
   if (props.state === "not-found") {
@@ -45,6 +47,7 @@ export function UsersView(
       locale={props.locale}
       currentUserId={props.currentUserId}
       users={props.users}
+      spaces={props.spaces}
     />
   );
 }
@@ -53,13 +56,17 @@ function UserList({
   locale,
   currentUserId,
   users,
+  spaces,
 }: {
   locale: string;
   currentUserId: string;
   users: UserRow[];
+  spaces: SpaceOption[];
 }) {
   const router = useRouter();
   const [isInviteOpen, setIsInviteOpen] = useState(false);
+  const editSpacesModalState = useEntityModalState<UserRow>();
+  const spaceTitles = new Map(spaces.map((space) => [space.id, space.title]));
   const removeModalState = useEntityModalState<UserRow>();
   const [isRemovePending, setIsRemovePending] = useState(false);
   const [removeError, setRemoveError] = useState<string | null>(null);
@@ -89,8 +96,9 @@ function UserList({
         <Button onClick={() => setIsInviteOpen(true)}>Invite User</Button>
       </Group>
       <Text c="dimmed" size="sm">
-        An admin signs in with Pocket ID. A guest gets an invitation, and signs
-        in with a link in an email. All users can read and change all spaces.
+        An admin signs in with Pocket ID, and reads and changes all spaces. A
+        guest gets an invitation, and signs in with a code in an email. A guest
+        reads and changes only the spaces that an admin gives the guest.
       </Text>
       <Table.ScrollContainer minWidth={560}>
         <Table verticalSpacing="sm">
@@ -99,6 +107,7 @@ function UserList({
               <Table.Th>Name</Table.Th>
               <Table.Th>Email</Table.Th>
               <Table.Th>Role</Table.Th>
+              <Table.Th>Spaces</Table.Th>
               <Table.Th>Since</Table.Th>
               <Table.Th>
                 <VisuallyHidden>Actions</VisuallyHidden>
@@ -119,6 +128,15 @@ function UserList({
                   </Badge>
                 </Table.Td>
                 <Table.Td>
+                  <SpacesCell
+                    role={user.role}
+                    spaceTitles={user.spaceIds.flatMap((spaceId) => {
+                      const title = spaceTitles.get(spaceId);
+                      return title === undefined ? [] : [title];
+                    })}
+                  />
+                </Table.Td>
+                <Table.Td>
                   {Temporal.PlainDate.from(user.createdDate).toLocaleString(
                     locale,
                     { dateStyle: "medium" },
@@ -126,17 +144,28 @@ function UserList({
                 </Table.Td>
                 <Table.Td>
                   {user.role === "guest" && user.id !== currentUserId ? (
-                    <Button
-                      variant="subtle"
-                      color="red"
-                      size="compact-sm"
-                      onClick={() => {
-                        setRemoveError(null);
-                        removeModalState.open({ selectedEntity: user });
-                      }}
-                    >
-                      Remove
-                    </Button>
+                    <Group gap="xs" wrap="nowrap" justify="flex-end">
+                      <Button
+                        variant="subtle"
+                        size="compact-sm"
+                        onClick={() =>
+                          editSpacesModalState.open({ selectedEntity: user })
+                        }
+                      >
+                        Edit Spaces
+                      </Button>
+                      <Button
+                        variant="subtle"
+                        color="red"
+                        size="compact-sm"
+                        onClick={() => {
+                          setRemoveError(null);
+                          removeModalState.open({ selectedEntity: user });
+                        }}
+                      >
+                        Remove
+                      </Button>
+                    </Group>
                   ) : null}
                 </Table.Td>
               </Table.Tr>
@@ -147,7 +176,16 @@ function UserList({
       <InviteUserModal
         isOpen={isInviteOpen}
         onRequestClose={() => setIsInviteOpen(false)}
+        spaces={spaces}
         onInvite={() => router.invalidate()}
+      />
+      <EditGuestSpacesModal
+        key={editSpacesModalState.key}
+        isOpen={editSpacesModalState.isOpen}
+        onRequestClose={editSpacesModalState.close}
+        guest={editSpacesModalState.selectedEntity}
+        spaces={spaces}
+        onSave={() => router.invalidate()}
       />
       <ConfirmModal
         isOpen={removeModalState.isOpen}
@@ -161,8 +199,8 @@ function UserList({
               </Text>
             ) : null}
             The guest can no longer sign in. This also removes the sessions, the
-            MCP connections, and the linked members of the guest. The
-            transactions of the guest stay.
+            MCP connections, the spaces, and the linked members of the guest.
+            The transactions of the guest stay.
           </>
         }
         confirmLabel="Remove Guest"
@@ -173,5 +211,38 @@ function UserList({
         isConfirmPending={isRemovePending}
       />
     </Stack>
+  );
+}
+
+/** The spaces of one user: "All spaces" for an admin (PLAN.md, D20). */
+function SpacesCell({
+  role,
+  spaceTitles,
+}: {
+  role: UserRow["role"];
+  spaceTitles: string[];
+}) {
+  if (role === "admin") {
+    return (
+      <Text size="sm" c="dimmed">
+        All spaces
+      </Text>
+    );
+  }
+  if (spaceTitles.length === 0) {
+    return (
+      <Text size="sm" c="dimmed">
+        No spaces
+      </Text>
+    );
+  }
+  return (
+    <Group gap={4}>
+      {spaceTitles.map((title) => (
+        <Badge key={title} variant="outline" color="gray" tt="none">
+          {title}
+        </Badge>
+      ))}
+    </Group>
   );
 }

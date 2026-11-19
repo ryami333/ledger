@@ -27,13 +27,16 @@ Phase 0 copies this glossary into `AGENTS.md`.
 
 - **User:** One row of `better_auth.users`. A person who can sign in with Pocket ID or with
   a sign-in code. A user is not a member, but a user can have a linked member in each space.
-  Each user can read and change all spaces.
+  An admin can read and change all spaces. A guest can read and change only the spaces of
+  the guest.
 - **Role:** `admin` or `guest`, in the column `better_auth.users.role`. The role is set when
   the user is made, and does not change. The sign-in method of a session does not change it.
 - **Admin:** A user with the role `admin`. The first Pocket ID sign-in of a person makes an
-  admin. An admin can invite and remove guests. An admin can sign in with Pocket ID or with a
-  sign-in code.
+  admin. An admin can invite and remove guests, and only an admin can make a space. An admin
+  can sign in with Pocket ID or with a sign-in code.
 - **Guest:** A user with the role `guest`. An invitation makes a guest.
+- **Space guest:** One row of `space_guests`. A space that one guest can read and change.
+  An admin sets them in the invitation and with "Edit Spaces".
 - **Invitation:** The action of an admin that adds a guest and sends an email to the guest.
 - **Sign-in code:** A code of 6 digits in an email. It signs in one user one time, in the
   browser that types it.
@@ -151,6 +154,8 @@ only one app and no worker, thus workspaces give no advantage. The folders `src/
   ID decides who becomes an admin. There is no email or password sign-in. An admin can
   invite a guest, who signs in with a sign-in code (D18, D19).
 - A user is not a member. A user can select a linked member in each space (D16).
+- D20 replaces the next point. An admin reads and changes all spaces, and a guest only the
+  spaces of the guest.
 - Each user can read and change all spaces. The RLS policies allow each operation to the role
   `authenticated`, with no row condition. The role `anon` has no grant.
 - RLS stays on for each table. Reasons: the role `anon` gets nothing, the pgTAP tests check
@@ -666,9 +671,8 @@ Rejected:
    the accounts, the OAuth tokens, the linked members, and the default space of the guest.
    The transactions of the guest stay, with `created_by` set to null. An admin cannot remove
    an admin or itself in the UI.
-6. **Access to the spaces does not change.** A guest can read and change all spaces, as an
-   admin can (D3). An MCP client of a guest has the same tools. The roles control only the
-   users.
+6. **Access to the spaces.** D20 replaces this rule. The first version kept D3: a guest
+   could read and change all spaces, as an admin can.
 7. **Check the role in the server.** The tables of `better_auth` are not in PostgREST, and
    RLS cannot see them. Thus `adminMiddleware` reads `role` from the session user, and
    refuses a user that is not an admin with `403`. This is the one exception to "Let RLS
@@ -676,6 +680,43 @@ Rejected:
 8. **A removed admin.** When an admin leaves the Pocket ID user group, the user row stays.
    The user can then still sign in with a sign-in code, as an admin. Thus remove the user in
    ledger too: `yarn user:remove --email <email>`.
+
+### D20: The spaces of a guest
+
+A guest reads and changes only the spaces that an admin gives the guest. An admin reads and
+changes all spaces, as in D3.
+
+1. **The table `space_guests`.** One row for each guest and space: `space_id` and
+   `user_id`, primary key `(space_id, user_id)`. A delete of the space or the user deletes
+   the row. A linked member (D16) does not give access. A guest selects a linked member only
+   in a space of the guest.
+2. **RLS checks the access.** Each policy of a table of a space calls
+   `can_access_space(space_id)`: true for an admin, or for a guest with a row in
+   `space_guests`. `current_user_is_admin()` reads `better_auth.users.role`. It is the only
+   `SECURITY DEFINER` function in `public`, because `authenticated` cannot read
+   `better_auth`. The web app and the MCP server need no change: RLS removes the other
+   spaces from each query.
+3. **Only an admin makes a space.** The insert policy of `spaces` calls
+   `current_user_is_admin()`. `SpacesView` shows "New Space" only to an admin. A guest
+   can still rename and delete a space of the guest.
+4. **Only an admin writes `space_guests`.** `set_space_guests(p_user_id, p_space_ids)`
+   replaces the spaces of a guest. It refuses a user that is not an admin with `42501`. A
+   guest reads only the rows of the guest itself.
+5. **The UI.** The invitation (`InviteUserModal`) has a spaces input with pills
+   (`GuestSpacesInput`, a Mantine `MultiSelect`) that lists all spaces. The table on
+   `/users` shows the spaces of each guest, and "Edit Spaces" opens
+   `EditGuestSpacesModal` with the same input. A guest with no spaces sees an empty list
+   on `/`.
+6. **A lost space.** The linked member and the default space of the guest in that space
+   stay. The policies hide them. They come back when the admin gives the space again.
+7. **Existing guests.** The migration `0012_space_guests.sql` gives each guest the spaces
+   where the guest had a linked member.
+
+Rejected:
+
+- **Access from the linked member.** The invitation would need a member for each space,
+  and a new member changes the balances of the space.
+- **A guest that makes a space.** It was decided that only an admin makes a space.
 
 ## Data model
 
@@ -708,6 +749,8 @@ member_id)`. Foreign keys `(space_id, alias_id)` to `aliases` and `(space_id, me
   exactly one of `member_id` and `alias_id`. Unique `(transaction_id, side, member_id)` and
   `(transaction_id, side, alias_id)`. Composite foreign keys to `transactions`, `members`, and
   `aliases` keep the party in the space of its transaction.
+- **`space_guests`**: `space_id`, `user_id`. Primary key `(space_id, user_id)`. The spaces
+  of a guest (D20). Only an admin writes it.
 - **`app_users`** (view): `id`, `name`, `image` of `better_auth.users`.
 - **`better_auth.users.role`**: `admin` or `guest`, default `guest` (D19). It is the only
   column that the app adds to a table of better-auth.
@@ -753,11 +796,12 @@ All pages use Mantine, inside one `AppShell` with the product name and a sign-ou
   Code, the default space (D17) and the linked member in each space (D16) in one form,
   and example prompts.
 - **`/users`** (`UsersView`): only for an admin. A table of the users (name, email, role,
-  date), "Invite User" (`InviteUserModal`: name and email, "Send Invitation"), and "Remove"
-  for each guest (`ConfirmModal`, "Remove Guest"). The user menu has "Users" for an admin
+  spaces, date), "Invite User" (`InviteUserModal`: name, email, and spaces, "Send
+  Invitation"), and "Edit Spaces" (`EditGuestSpacesModal`, D20) and "Remove" for each guest
+  (`ConfirmModal`, "Remove Guest"). The user menu has "Users" for an admin
   only (D19).
 - **`/`** (`SpacesView`): the spaces as cards (title, description, member count, date of the
-  last transaction). A "New Space" button opens a modal: title, slug (from the title until
+  last transaction). Only an admin sees the "New Space" button (D20). It opens a modal: title, slug (from the title until
   the user changes it), description, default currency, and the first member names.
 - **`/spaces/$spaceSlug`** (`SpaceView`):
   - Header: title, description, a "Space Settings" button, and the "Add Transaction" button.
@@ -1295,9 +1339,8 @@ Open questions:
 
 - **MCP from another device.** Resolved in Phase 9: the sign-in code replaced the magic
   link (D18).
-- **What can a guest do?** D19 keeps D3: a guest can read and change all spaces. A later
-  step can limit a guest to some spaces (roadmap: "Access for some users only to some
-  spaces").
+- **What can a guest do?** Resolved in Phase 10: a guest reads and changes only the spaces
+  of the guest (D20).
 - **A removed admin.** Is `yarn user:remove` enough? A user removed from the Pocket ID user
   group can still sign in with a sign-in code, as an admin, until the script deletes the user.
 - **A guest that becomes an admin.** The role does not change. To make a guest an admin, an
@@ -1342,6 +1385,29 @@ Notes:
 - The tab "MCP" saved a default space and a linked member through the server functions of
   D16 and D17.
 
+### Phase 10: The spaces of a guest
+
+See D20.
+
+- [x] Database: `space_guests`, `current_user_is_admin`, `can_access_space`,
+      `set_space_guests`, the new policies, and `0012_space_guests.sql`. pgTAP:
+      `space_guests.test.sql`. The fixtures make users A and B admins, and add guest C.
+- [x] Server: `setSpaceGuests`, `setGuestSpacesServerFn`, the spaces in
+      `inviteUserServerFn` and `listUsersServerFn`, and the admin check in
+      `createSpaceServerFn`.
+- [x] UI: `GuestSpacesInput` in `InviteUserModal` and `EditGuestSpacesModal`, the column
+      "Spaces" on `/users`, and no "New Space" for a guest.
+- [x] Test against the local stack (see the notes).
+- [ ] Release as `minor`. The upgrade notes tell that each guest keeps only the spaces with
+      a linked member of the guest.
+
+Notes:
+
+- Tested in the browser against the local stack, with sessions put into
+  `better_auth.sessions` by hand. The guest saw only "Washington". The admin saw both
+  spaces in the spaces input, and "Edit Spaces" added "Shmitch". The guest then saw both
+  spaces. The invitation was not sent, because the send uses Resend.
+
 ## Roadmap
 
 - Settle up: calculate the smallest set of payments that brings each balance to zero. Add a
@@ -1357,7 +1423,6 @@ Notes:
 - Receipt photos.
 - CSV export of a space.
 - Archive a space.
-- Access for some users only to some spaces (new RLS policies, D3).
 - "You owe" texts in the UI, from the linked member (D16).
 - A SQL view for the balances, if a space gets too large for D10.
 

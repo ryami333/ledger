@@ -22,13 +22,16 @@ comments, docs, and chat.
 
 - **User:** One row of `better_auth.users`. A person who can sign in with Pocket ID or with
   a sign-in code. A user is not a member, but a user can have a linked member in each space.
-  Each user can read and change all spaces.
+  An admin can read and change all spaces. A guest can read and change only the spaces of
+  the guest.
 - **Role:** `admin` or `guest`, in the column `better_auth.users.role`. The role is set when
   the user is made, and does not change. The sign-in method of a session does not change it.
 - **Admin:** A user with the role `admin`. The first Pocket ID sign-in of a person makes an
-  admin. An admin can invite and remove guests. An admin can sign in with Pocket ID or with a
-  sign-in code.
+  admin. An admin can invite and remove guests, and only an admin can make a space. An admin
+  can sign in with Pocket ID or with a sign-in code.
 - **Guest:** A user with the role `guest`. An invitation makes a guest.
+- **Space guest:** One row of `space_guests`. A space that one guest can read and change.
+  An admin sets them in the invitation and with "Edit Spaces".
 - **Invitation:** The action of an admin that adds a guest and sends an email to the guest.
 - **Sign-in code:** A code of 6 digits in an email. It signs in one user one time, in the
   browser that types it.

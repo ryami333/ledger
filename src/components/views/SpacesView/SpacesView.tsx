@@ -17,13 +17,19 @@ import styles from "./SpacesView.module.css";
 
 const cx = classNames.bind(styles);
 
-/** The page `/`: the spaces as cards, and the "New space" modal. */
+/**
+ * The page `/`: the spaces as cards, and the "New space" modal. A guest sees
+ * only the spaces of the guest, and cannot make a space (PLAN.md, D20).
+ */
 export function SpacesView({
   locale,
   spaces,
+  canCreateSpace,
 }: {
   locale: string;
   spaces: SpaceSummary[];
+  /** True for an admin. */
+  canCreateSpace: boolean;
 }) {
   const [isNewSpaceOpen, setIsNewSpaceOpen] = useState(false);
 
@@ -31,11 +37,15 @@ export function SpacesView({
     <Stack gap="md">
       <Group justify="space-between">
         <Title order={1}>Spaces</Title>
-        <Button onClick={() => setIsNewSpaceOpen(true)}>New Space</Button>
+        {canCreateSpace ? (
+          <Button onClick={() => setIsNewSpaceOpen(true)}>New Space</Button>
+        ) : null}
       </Group>
       {spaces.length === 0 ? (
         <Text c="dimmed">
-          No spaces yet. Make a space for a trip or a household.
+          {canCreateSpace
+            ? "No spaces yet. Make a space for a trip or a household."
+            : "You have no spaces yet. Ask an admin to give you a space."}
         </Text>
       ) : (
         <SimpleGrid cols={{ base: 1, sm: 2 }}>
@@ -75,11 +85,13 @@ export function SpacesView({
           ))}
         </SimpleGrid>
       )}
-      <NewSpaceModal
-        isOpen={isNewSpaceOpen}
-        onRequestClose={() => setIsNewSpaceOpen(false)}
-        locale={locale}
-      />
+      {canCreateSpace ? (
+        <NewSpaceModal
+          isOpen={isNewSpaceOpen}
+          onRequestClose={() => setIsNewSpaceOpen(false)}
+          locale={locale}
+        />
+      ) : null}
     </Stack>
   );
 }

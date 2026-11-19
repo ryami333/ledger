@@ -12,11 +12,12 @@ export const Route = createFileRoute("/_app/users")({
     if (context.user.role !== "admin") {
       return { state: "not-found" as const };
     }
-    const { locale, users } = await listUsersServerFn();
+    const { locale, users, spaces } = await listUsersServerFn();
     return {
       state: "ready" as const,
       locale,
       users,
+      spaces,
       currentUserId: context.user.id,
     };
   },
